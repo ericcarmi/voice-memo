@@ -1,10 +1,12 @@
 <script lang="ts">
+    import { invoke } from "@tauri-apps/api/tauri";
   import { onMount } from "svelte";
   import { WebglPlot, WebglLine, ColorRGBA } from "webgl-plot";
 
   let webglp: WebglPlot;
   let line: WebglLine;
-
+  export let data: Array<number> = [];
+  export let selectedRecording: string;
 
   let canvasMain: any;
   export let freq = 420;
@@ -24,16 +26,26 @@
     line.arrangeX();
   });
 
-  $: freq, update();
+  $: data, console.log(data);
 
-  function update() {
+
+  async function getData() {
+    let data: Array<number> = await invoke("get_wav_data", {path: selectedRecording})
+    update();
+    console.log(data)
+    console.log(selectedRecording)
+
     let id = 0;
     let renderPlot = () => {
-      for (let i = 0; i < line.numPoints; i++) {
-        const ySin = Math.sin((2 * i * Math.PI * freq) / 44100);
-        line.setY(i, ySin * amp);
+
+      // for (let i = 0; i < line.numPoints; i++) {
+      //   const ySin = Math.sin((2 * i * Math.PI * freq) / 44100);
+      //   line.setY(i, ySin * amp);
+      // }
+      for (let i = 0; i < data.length; i++) {
+        line.setY(i, data[i] * 10);
       }
-      id = requestAnimationFrame(renderPlot);
+      // id = requestAnimationFrame(renderPlot);
       webglp.update();
     };
     id = requestAnimationFrame(renderPlot);
@@ -44,13 +56,37 @@
     };
   }
 
+  $: selectedRecording, getData();
+
+  function update() {
+    let id = 0;
+    let renderPlot = () => {
+
+      // for (let i = 0; i < line.numPoints; i++) {
+      //   const ySin = Math.sin((2 * i * Math.PI * freq) / 44100);
+      //   line.setY(i, ySin * amp);
+      // }
+      for (let i = 0; i < data.length; i++) {
+        line.setY(i, data[i] * 100);
+      }
+      // id = requestAnimationFrame(renderPlot);
+      webglp.update();
+    };
+    id = requestAnimationFrame(renderPlot);
+
+    return () => {
+      renderPlot = () => {};
+      cancelAnimationFrame(id);
+    };
+  }
 </script>
 
 <canvas id="my_canvas" />
 
 <style>
   canvas {
-    width: 400px;
+    width: 70%;
     height: 300px;
+    border: 1px solid gray;
   }
 </style>

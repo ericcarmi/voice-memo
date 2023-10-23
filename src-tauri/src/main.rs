@@ -142,6 +142,7 @@ fn main() {
             set_dark_mode,
             set_always_on_top,
             file_metadata,
+            get_wav_data,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -282,7 +283,8 @@ fn file_metadata(path: &str, window: Window) -> String {
 
 fn iso8601(st: &std::time::SystemTime) -> String {
     let dt: DateTime<Utc> = st.clone().into();
-    format!("{}", dt.format("%Y-%m-%d--%H:%M:%S"))
+    format!("{}", dt.format("%+"))
+    // format!("{}", dt.format("%Y-%m-%d--%H:%M:%S"))
     // formats like "2001-07-08T00:34:60.026490+09:30"
 }
 
@@ -355,4 +357,29 @@ fn str_from_path(path: PathBuf) -> String {
     let x3 = x2.into_string().unwrap();
 
     x3[4..x3.len()].to_string()
+}
+
+#[tauri::command]
+fn get_wav_data(path: &str, app_handle: tauri::AppHandle) -> Result<Vec<f64>, &str> {
+    let mut v = vec![];
+
+    let p = app_handle
+        .path_resolver()
+        .resolve_resource(ASSETS_PATH)
+        .expect("failed to resolve resource")
+        .into_os_string()
+        .into_string()
+        .unwrap();
+
+    println!("{:?}", p.clone() + "/" + path);
+    if let Ok(mut reader) = hound::WavReader::open(p + "/" + path) {
+        let itr = reader.samples::<f32>().into_iter().step_by(1);
+        for s in itr {
+            v.push(s.unwrap() as f64);
+        }
+    } else {
+        return Err("bad path");
+    }
+
+    Ok(v)
 }

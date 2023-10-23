@@ -2,28 +2,10 @@
   import { invoke } from "@tauri-apps/api/tauri";
   import { onMount } from "svelte";
   import { readDir, BaseDirectory, renameFile } from "@tauri-apps/api/fs";
+  import type { Recording } from "./types.svelte";
 
-  let recordings = {};
-  let uid = 0;
-  let entries: any;
-  onMount(async () => {
-    entries = await readDir("assets", {
-      dir: BaseDirectory.Resource,
-      recursive: true,
-    });
-    for (const entry of entries) {
-      if (entry["name"].includes(".wav") && !entry["name"].includes("input")) {
-        let meta = await invoke("file_metadata", { path: entry["path"] });
-        console.log(entry, meta);
-
-        recordings[uid] = {
-          name: entry["name"].replace(".wav", ""),
-          created: meta,
-        };
-        uid += 1;
-      }
-    }
-  });
+  export let recordings: Record<string, Recording>;
+  export let uid: number;
 
   async function updateFileName(oldname: string, newname: string) {
     console.log(oldname);
@@ -39,17 +21,17 @@
     // console.log(r)
   }
 
-  let selectedRecording = Object.keys(recordings).length;
+  export let selectedRecording: string;
 
   let isRecording = false;
 
   async function record() {
     if (isRecording) return;
     isRecording = true;
-    // let date = new Date().toISOString();
-    // let s = date.split("T");
-    // const fname = s[0] + "--" + s[1].split(".")[0] + ".wav";
-    recordings[uid] = uid;
+    let date = new Date().toISOString();
+    let s = date.split("T");
+    const fname = s[0] + "--" + s[1].split(".")[0] + ".wav";
+    recordings[uid + ".wav"] = { created: date, uid: uid };
     await invoke("record", {
       name: uid + ".wav",
     });
@@ -72,38 +54,38 @@
     {#each Object.entries(recordings) as recording, i}
       <div
         class="recording"
-        data-attribute={selectedRecording == i}
+        data-attribute={selectedRecording === recording[0]}
         on:keydown={() => {}}
         role="button"
         tabindex={0}
-        on:click={() => (selectedRecording = i)}
+        on:click={() => (selectedRecording = recording[0])}
       >
         <input
-          disabled={selectedRecording !== i}
+          disabled={selectedRecording !== recording[0]}
           class="filename"
-          value={recording[1]["name"]}
+          value={recording[0].replace(".wav","")}
           on:focus={(e) => {
             oldName = e.currentTarget.value;
           }}
           on:keydown={(e) => {
             if (e.key === "Escape") {
               tempName = oldName;
-            } else if (e.key === "Enter" && oldName != tempName) {
+            } else if (e.key === "Enter") {
+              tempName = e.currentTarget.value;
               updateFileName(oldName, tempName);
             } else {
               tempName = e.currentTarget.value;
-              console.log(tempName);
             }
           }}
           on:change={(e) => {
-            tempName = e.currentTarget.value;
+            // tempName = e.currentTarget.value;
           }}
           on:blur={(e) => {
             // blur is equivalent to pressing enter? or escape? big difference, not sure which one to use
-            // tempName = oldName;
+              updateFileName(oldName, tempName);
           }}
         />
-        <span>{recording[1]["created"].split('--').join(' ')}</span>
+        <span>{recording[1]["created"].split('T')[0] + " " + recording[1].created.split('T')[1].split('.')[0]}</span>
       </div>
     {/each}
   </div>
@@ -144,5 +126,6 @@
     width: 100%;
     flex-grow: 1;
     font-size: 12px;
+    color: rgb(0,200,0);
   }
 </style>

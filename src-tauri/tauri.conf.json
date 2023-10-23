@@ -30,8 +30,7 @@
       "targets": "all",
       "identifier": "com.ecarmi.audiorecorder",
       "resources": [
-        "assets/input.wav",
-        "assets/output.wav"
+        "assets/input.wav"
       ],
       "icon": [
         "icons/32x32.png",
