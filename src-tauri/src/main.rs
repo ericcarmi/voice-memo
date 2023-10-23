@@ -13,6 +13,7 @@ use std::time::SystemTime;
 // use tauri::api::process::Command as CMD;
 use chrono::{self, DateTime, Utc};
 
+use rustfft::{num_complex::Complex, FftPlanner};
 use std::sync::Mutex;
 use std::{fs::metadata, fs::File, io::BufWriter, process::Command};
 use tauri::command::CommandItem;
@@ -143,6 +144,7 @@ fn main() {
             set_always_on_top,
             file_metadata,
             get_wav_data,
+            get_fft_data,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -360,8 +362,9 @@ fn str_from_path(path: PathBuf) -> String {
 }
 
 #[tauri::command]
-fn get_wav_data(path: &str, app_handle: tauri::AppHandle) -> Result<Vec<f64>, &str> {
+fn get_wav_data(path: &str, app_handle: tauri::AppHandle) -> Result<(Vec<f32>, Vec<f32>), &str> {
     let mut v = vec![];
+    let mut vfft: Vec<f32> = vec![];
 
     let p = app_handle
         .path_resolver()
@@ -371,15 +374,66 @@ fn get_wav_data(path: &str, app_handle: tauri::AppHandle) -> Result<Vec<f64>, &s
         .into_string()
         .unwrap();
 
-    println!("{:?}", p.clone() + "/" + path);
     if let Ok(mut reader) = hound::WavReader::open(p + "/" + path) {
         let itr = reader.samples::<f32>().into_iter().step_by(1);
+        let mut buffer = vec![];
+        let len = itr.len();
         for s in itr {
-            v.push(s.unwrap() as f64);
+            let x = s.unwrap() as f32;
+            v.push(x.clone());
+            buffer.push(Complex { re: x, im: 0.0f32 })
         }
+        let mut planner = FftPlanner::new();
+        let fft = planner.plan_fft_forward(len);
+
+        fft.process(&mut buffer);
+
+        let mut vfft = vec![];
+        for i in buffer {
+            vfft.push(i.norm());
+        }
+        return Ok((v, vfft));
     } else {
         return Err("bad path");
     }
 
-    Ok(v)
+    Ok((v, vfft))
+}
+
+#[tauri::command]
+fn get_fft_data(path: &str, app_handle: tauri::AppHandle) -> Result<Vec<f32>, &str> {
+    let mut vfft: Vec<f32> = vec![];
+
+    let p = app_handle
+        .path_resolver()
+        .resolve_resource(ASSETS_PATH)
+        .expect("failed to resolve resource")
+        .into_os_string()
+        .into_string()
+        .unwrap();
+
+    if let Ok(mut reader) = hound::WavReader::open(p + "/" + path) {
+        let itr = reader.samples::<f32>().into_iter().step_by(1);
+        let mut buffer = vec![];
+        let len = itr.len();
+        for s in itr {
+            let x = s.unwrap() as f32;
+            buffer.push(Complex { re: x, im: 0.0f32 })
+        }
+        let mut planner = FftPlanner::new();
+        let fft = planner.plan_fft_forward(len);
+
+        fft.process(&mut buffer);
+
+        let mut vfft = vec![];
+        for i in buffer {
+            vfft.push(i.norm());
+        }
+        return Ok(vfft);
+    } else {
+        return Err("bad path");
+    }
+
+    println!("{:?}", vfft);
+    Ok(vfft)
 }
