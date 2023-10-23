@@ -5,14 +5,16 @@
 use clap::Parser;
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::{FromSample, Sample, Stream};
+use std::fs::Metadata;
 // use std::os::windows::process::CommandExt;
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::SystemTime;
 // use tauri::api::process::Command as CMD;
-use chrono;
+use chrono::{self, DateTime, Utc};
 
 use std::sync::Mutex;
-use std::{fs::File, io::BufWriter, process::Command};
+use std::{fs::metadata, fs::File, io::BufWriter, process::Command};
 use tauri::command::CommandItem;
 use tauri::State;
 use tauri::{Manager, Window};
@@ -26,7 +28,8 @@ struct Payload {
 }
 
 const INPUT_WAV_PATH: &str = "assets/input.wav";
-const OUTPUT_WAV_PATH: &str = "assets/output.wav";
+const ASSETS_PATH: &str = "assets/";
+// const OUTPUT_WAV_PATH: &str = "assets/output.wav";
 
 #[derive(Debug)]
 struct Mbool(Mutex<bool>);
@@ -130,7 +133,6 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             record,
             stop_recording,
-            init_process,
             always_on_top_true,
             always_on_top_false,
             set_ipc,
@@ -139,6 +141,7 @@ fn main() {
             set_accent,
             set_dark_mode,
             set_always_on_top,
+            file_metadata,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -237,20 +240,6 @@ fn get_ipc(ipc: State<IPCstring>, window: Window) {
 }
 
 #[tauri::command]
-fn init_process(window: Window) {
-    std::thread::spawn(move || loop {
-        window
-            .emit(
-                "init_process",
-                Payload {
-                    message: "Tauri is awesome!".into(),
-                },
-            )
-            .unwrap();
-    });
-}
-
-#[tauri::command]
 fn always_on_top_false(window: Window) {
     window.set_always_on_top(false);
 }
@@ -274,20 +263,27 @@ fn stop_recording(
 
     stream.0.pause().expect("failed to pause stream");
 
-    // need to not just unwrap, handle it
-    // writer
-    //     .lock()
-    //     .unwrap()
-    //     .take()
-    //     .expect("failed to unwrap")
-    //     .finalize()
-    //     .expect("writer failed to finalize");
-
     if let Some(i) = writer.clone().lock().unwrap().take() {
         i.finalize().expect("writer failed to finalize");
     } else {
         println!("writer failed");
     }
+}
+
+#[tauri::command]
+fn file_metadata(path: &str, window: Window) -> String {
+    let meta = metadata(path);
+    if meta.is_ok() {
+        iso8601(&meta.unwrap().created().unwrap()).to_string()
+    } else {
+        "err".to_string()
+    }
+}
+
+fn iso8601(st: &std::time::SystemTime) -> String {
+    let dt: DateTime<Utc> = st.clone().into();
+    format!("{}", dt.format("%Y-%m-%d--%H:%M:%S"))
+    // formats like "2001-07-08T00:34:60.026490+09:30"
 }
 
 #[tauri::command]
@@ -320,8 +316,17 @@ fn record(
         .default_input_config()
         .expect("Failed to get default input config");
 
+    let input_path = app_handle
+        .path_resolver()
+        .resolve_resource(ASSETS_PATH)
+        .expect("failed to resolve resource")
+        .into_os_string()
+        .into_string()
+        .unwrap();
+    // println!("{:?}", input_path.clone() + "/" + name);
+
     let spec = wav_spec_from_config(&config);
-    let writer0 = hound::WavWriter::create(name, spec).expect("writer failed");
+    let writer0 = hound::WavWriter::create(input_path + "/" + name, spec).expect("writer failed");
     *writer = Arc::new(Mutex::new(Some(writer0)));
 
     let writer_2 = writer.clone();

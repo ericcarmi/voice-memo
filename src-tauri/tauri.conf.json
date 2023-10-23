@@ -19,7 +19,7 @@
       },
       "fs": {
         "all": true,
-        "scope": ["$RESOURCE/*"]
+        "scope": ["$RESOURCE/**", "$RESOURCE/*"]
       },
       "dialog": {
         "all": true

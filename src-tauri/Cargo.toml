@@ -21,6 +21,7 @@ cpal = "0.15.2"
 rusqlite = "0.29.0"
 clap = { version = "4.4.6", features = ["derive"] }
 chrono = "0.4.31"
+anyhow = "1.0.75"
 
 [features]
 # this feature is used for production builds or when `devPath` points to the filesystem
