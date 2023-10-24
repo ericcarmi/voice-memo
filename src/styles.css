@@ -12,11 +12,11 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   -webkit-text-size-adjust: 100%;
+  user-select: none;
 }
 
 .container {
   margin: 0;
-  display: flex;
   text-align: center;
 }
 
@@ -53,10 +53,6 @@ button:active {
 input,
 button {
   outline: none;
-}
-
-#greet-input {
-  margin-right: 5px;
 }
 
 @media (prefers-color-scheme: dark) {

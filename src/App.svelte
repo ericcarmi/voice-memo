@@ -31,6 +31,7 @@
     }
   });
   let selectedRecording = "";
+  let isDragging = false;
 
   // Object.entries(recordings).sort(function (a, b) {
   //   let x = new Date(b[1].created);
@@ -40,9 +41,26 @@
 </script>
 
 <main class="container">
-  <Recordings {recordings} {uid} bind:selectedRecording={selectedRecording} />
-  <TimePlot bind:data={data} bind:selectedRecording={selectedRecording}/>
+  <div
+    style="display:flex"
+    role="button"
+    tabindex={0}
+    on:mousemove={(e) => {
+      if (isDragging) {
+        e.preventDefault(); // need this to not change to text cursor
+        let ele = document.getElementById("draggable");
+        ele && (ele.style.left = Math.max(0, e.clientX - 190) + "px");
+      }
+    }}
+    on:mouseup={() => (isDragging = false)}
+  >
+    <Recordings {recordings} {uid} bind:selectedRecording />
+    <TimePlot bind:data bind:selectedRecording bind:isDragging />
+  </div>
 </main>
 
 <style>
+  div {
+    user-select: none;
+  }
 </style>

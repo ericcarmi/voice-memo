@@ -1,6 +1,5 @@
 <script lang="ts">
   import { invoke } from "@tauri-apps/api/tauri";
-  import { onMount } from "svelte";
   import { readDir, BaseDirectory, renameFile } from "@tauri-apps/api/fs";
   import type { Recording } from "./types.svelte";
 
@@ -29,8 +28,8 @@
     if (isRecording) return;
     isRecording = true;
     let date = new Date().toISOString();
-    let s = date.split("T");
-    const fname = s[0] + "--" + s[1].split(".")[0] + ".wav";
+    // let s = date.split("T");
+    // const fname = s[0] + "--" + s[1].split(".")[0] + ".wav";
     recordings[uid + ".wav"] = { created: date, uid: uid };
     await invoke("record", {
       name: uid + ".wav",
@@ -51,7 +50,7 @@
 <div class="wrapper">
   <p>recordings</p>
   <div class="list">
-    {#each Object.entries(recordings) as recording, i}
+    {#each Object.entries(recordings) as recording}
       <div
         class="recording"
         data-attribute={selectedRecording === recording[0]}

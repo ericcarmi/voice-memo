@@ -22,6 +22,11 @@ use tauri::{Manager, Window};
 
 mod database;
 
+struct WavMetadata {
+    created: &'static str,
+    sample_rate: i32,
+}
+
 // the payload type must implement `Serialize` and `Clone`.
 #[derive(Clone, serde::Serialize)]
 struct Payload {
@@ -144,7 +149,7 @@ fn main() {
             set_always_on_top,
             file_metadata,
             get_wav_data,
-            get_fft_data,
+            get_stft_data,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -276,6 +281,7 @@ fn stop_recording(
 #[tauri::command]
 fn file_metadata(path: &str, window: Window) -> String {
     let meta = metadata(path);
+
     if meta.is_ok() {
         iso8601(&meta.unwrap().created().unwrap()).to_string()
     } else {
@@ -401,8 +407,12 @@ fn get_wav_data(path: &str, app_handle: tauri::AppHandle) -> Result<(Vec<f32>, V
 }
 
 #[tauri::command]
-fn get_fft_data(path: &str, app_handle: tauri::AppHandle) -> Result<Vec<f32>, &str> {
-    let mut vfft: Vec<f32> = vec![];
+fn get_stft_data(
+    path: &str,
+    app_handle: tauri::AppHandle,
+) -> Result<(Vec<f32>, Vec<Vec<f32>>), &str> {
+    let mut v = vec![];
+    let mut vstft: Vec<Vec<f32>> = vec![];
 
     let p = app_handle
         .path_resolver()
@@ -418,22 +428,40 @@ fn get_fft_data(path: &str, app_handle: tauri::AppHandle) -> Result<Vec<f32>, &s
         let len = itr.len();
         for s in itr {
             let x = s.unwrap() as f32;
+            v.push(x.clone());
             buffer.push(Complex { re: x, im: 0.0f32 })
         }
-        let mut planner = FftPlanner::new();
-        let fft = planner.plan_fft_forward(len);
 
-        fft.process(&mut buffer);
+        let fftsize = 512;
+        let vstft = stft(buffer.clone(), fftsize, fftsize);
 
-        let mut vfft = vec![];
-        for i in buffer {
-            vfft.push(i.norm());
-        }
-        return Ok(vfft);
+        return Ok((v, vstft));
     } else {
         return Err("bad path");
     }
 
-    println!("{:?}", vfft);
-    Ok(vfft)
+    Ok((v, vstft))
+}
+
+fn stft(mut buffer: Vec<Complex<f32>>, size: usize, hop: usize) -> Vec<Vec<f32>> {
+    let mut planner = FftPlanner::new();
+    let fft = planner.plan_fft_forward(size);
+
+    let l = buffer.len();
+    let num_slices = (l / size);
+    let mut spectra: Vec<Vec<f32>> = vec![];
+    for slice in 0..num_slices {
+        let mut x = buffer[slice * size..(slice + 1) * size].to_vec().clone();
+
+        fft.process(&mut x);
+
+        let mut v = vec![];
+        for i in x {
+            v.push(i.norm());
+        }
+        spectra.push(v);
+    }
+    println!("{:?}", spectra.len());
+
+    spectra
 }
