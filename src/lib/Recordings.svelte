@@ -6,6 +6,11 @@
   export let recordings: Record<string, Recording>;
   export let uid: number;
 
+  export let prefix = ""
+  export let counter = 0;
+
+  $: prefix, console.log(prefix)
+
   async function updateFileName(oldname: string, newname: string) {
     console.log(oldname);
     console.log(newname);
@@ -30,9 +35,18 @@
     let date = new Date().toISOString();
     // let s = date.split("T");
     // const fname = s[0] + "--" + s[1].split(".")[0] + ".wav";
-    recordings[uid + ".wav"] = { created: date, uid: uid };
+    let fname;
+    if(prefix === "") {
+      fname = uid + ".wav"
+    } else {
+      fname = prefix + counter + ".wav"
+      counter += 1;
+    }
+    console.log(fname)
+
+    recordings[fname] = { created: date, uid: uid };
     await invoke("record", {
-      name: uid + ".wav",
+      name: fname,
     });
     uid += 1;
   }
@@ -99,8 +113,8 @@
     border: 1px solid #333333;
   }
   .list {
-    height: 300px;
     overflow-y: scroll;
+    height: 250px;
   }
   .recording {
     background: #333333;

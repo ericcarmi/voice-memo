@@ -76,7 +76,7 @@ fn main() {
             let path: &str = INPUT_WAV_PATH.clone();
 
             let spec = wav_spec_from_config(&config);
-            let writer0 = hound::WavWriter::create(path, spec).expect("writer failed");
+            let writer0 = hound::WavWriter::create(".blank.wav", spec).expect("writer failed");
             let writer = Arc::new(Mutex::new(Some(writer0)));
 
             // // Run the input stream on a separate thread.
@@ -119,7 +119,7 @@ fn main() {
 
             let spec = wav_spec_from_config(&config);
 
-            let writer0 = hound::WavWriter::create(path, spec).expect("writer failed");
+            let writer0 = hound::WavWriter::create(".blank.wav", spec).expect("writer failed");
             let writer = Arc::new(Mutex::new(Some(writer0)));
 
             Mutex::new(writer)
@@ -395,7 +395,7 @@ fn get_wav_data(path: &str, app_handle: tauri::AppHandle) -> Result<(Vec<f32>, V
         fft.process(&mut buffer);
 
         let mut vfft = vec![];
-        for i in buffer {
+        for i in buffer[0..len / 2].iter() {
             vfft.push(i.norm());
         }
         return Ok((v, vfft));
@@ -432,7 +432,7 @@ fn get_stft_data(
             buffer.push(Complex { re: x, im: 0.0f32 })
         }
 
-        let fftsize = 512;
+        let fftsize = 8192;
         let vstft = stft(buffer.clone(), fftsize, fftsize);
 
         return Ok((v, vstft));
@@ -456,12 +456,11 @@ fn stft(mut buffer: Vec<Complex<f32>>, size: usize, hop: usize) -> Vec<Vec<f32>>
         fft.process(&mut x);
 
         let mut v = vec![];
-        for i in x {
+        for i in x[0..size / 2].iter() {
             v.push(i.norm());
         }
         spectra.push(v);
     }
-    println!("{:?}", spectra.len());
 
     spectra
 }

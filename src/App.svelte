@@ -5,7 +5,11 @@
   import { onMount } from "svelte";
   import { readDir, BaseDirectory } from "@tauri-apps/api/fs";
   import type { Recording } from "./lib/types.svelte";
+  import Menu from "./lib/Menu.svelte";
 
+
+  let prefix = ""
+  let counter = 0;
   let recordings: Record<string, Recording> = {};
   let uid = 0;
   let entries: any;
@@ -20,7 +24,7 @@
         let meta: string = await invoke("file_metadata", {
           path: entry["path"],
         });
-        console.log(entry, meta);
+        // console.log(entry, meta);
 
         recordings[entry["name"]] = {
           created: meta,
@@ -54,8 +58,11 @@
     }}
     on:mouseup={() => (isDragging = false)}
   >
-    <Recordings {recordings} {uid} bind:selectedRecording />
-    <TimePlot bind:data bind:selectedRecording bind:isDragging />
+  <div style='display:flex; flex-direction: column;'>
+    <Menu bind:counter={counter} bind:prefix={prefix}/>
+    <Recordings {recordings} {uid} bind:selectedRecording  bind:counter bind:prefix />
+    </div>
+    <TimePlot bind:selectedRecording bind:isDragging />
   </div>
 </main>
 

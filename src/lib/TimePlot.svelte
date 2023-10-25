@@ -2,6 +2,7 @@
   import { invoke } from "@tauri-apps/api/tauri";
   import { onMount } from "svelte";
   import { WebglPlot, WebglLine, ColorRGBA, WebglSquare } from "webgl-plot";
+  import { loglin, linlog } from "./types.svelte";
 
   let webglp: WebglPlot;
   let line: WebglLine;
@@ -33,8 +34,8 @@
     freqcanvas = document.getElementById("freq_canvas");
     // freqcanvas.width = freqcanvas.clientWidth * devicePixelRatio;
     // freqcanvas.height = freqcanvas.clientHeight * devicePixelRatio;
-    freqcanvas.width = 400
-    freqcanvas.height = 200
+    freqcanvas.width = 400;
+    freqcanvas.height = 200;
 
     freqwebglp = new WebglPlot(freqcanvas);
 
@@ -43,8 +44,7 @@
 
   async function getData() {
     let data: any = await invoke("get_stft_data", { path: selectedRecording });
-    console.log(data)
-
+    console.log(data);
 
     let id = 0;
     let renderPlot = () => {
@@ -53,7 +53,7 @@
       webglp.removeAllLines();
       webglp.addLine(line);
       line.arrangeX();
-      for (let i = 0; i < data[0].length; i++) {
+      for (let i = 0; i < data[0].length; i+=32) {
         line.setY(i, data[0][i] * 1);
       }
       webglp.update();
@@ -66,33 +66,53 @@
       let fwidth = 2 / fftsize;
       let vertices: any = [];
       let colors: Array<number> = [];
-      console.log(stft.length*fftsize, freqcanvas.width, freqcanvas.height)
-      let freqhop = 10;
+      // console.log(stft.length * fftsize, freqcanvas.width, freqcanvas.height);
+      let freqhop = 20;
 
-      // for (let t = 0; t < stft.length; t+=1) {
-      //   for (let freq = 0; freq < fftsize; freq+=freqhop) {
-      //     // freqs.push(stft[t][freq]);
+      for (let t = 0; t < stft.length; t += 1) {
+        for (let freq = 0; freq < fftsize; freq += freqhop) {
+          // freqs.push(stft[t][freq]);
 
-      //     let x1 = -1.0 + twidth * t;
-      //     let y1 = -1.0 + fwidth * freq;
-      //     let x2 = -1.0 + twidth * (t + 1);
-      //     let y2 = -1.0 + fwidth * freq;
-      //     let x3 = -1.0 + twidth * t;
-      //     let y3 = -1.0 + (fwidth+freqhop) * (freq + 1);
-      //     let x4 = -1.0 + twidth * (t + 1);
-      //     let y4 = -1.0 + (fwidth+freqhop) * (freq + 1);
-      //     vertices.push(x1, y1, 0.0, x2, y2, 0.0, x3, y3, 0.0, x2, y2, 0.0, x3, y3, 0.0, x4, y4, 0.0);
-      //     let amp = 0.0;
-      //     for(let k = 0; k < freqhop; k++) {
-      //       amp += stft[t][freq+k];
-      //     }
-          
-      //     if(isNaN(amp)) {amp = 1.0}
-      //     colors = colors.concat(Array(18).fill(Math.log10(1+amp/2.0)))
-      //   }
-      // }
-      console.log('colors', colors)
+          let x1 = -1.0 + twidth * t;
+          let y1 = -1.0 + fwidth * freq;
+          let x2 = -1.0 + twidth * (t + 1);
+          let y2 = -1.0 + fwidth * freq;
+          let x3 = -1.0 + twidth * t;
+          let y3 = -1.0 + (fwidth + freqhop) * (freq + 1);
+          let x4 = -1.0 + twidth * (t + 1);
+          let y4 = -1.0 + (fwidth + freqhop) * (freq + 1);
+          vertices.push(
+            x1,
+            y1,
+            0.0,
+            x2,
+            y2,
+            0.0,
+            x3,
+            y3,
+            0.0,
+            x2,
+            y2,
+            0.0,
+            x3,
+            y3,
+            0.0,
+            x4,
+            y4,
+            0.0
+          );
+          let amp = 0.0;
+          for (let k = 0; k < freqhop; k++) {
+            amp += Math.log10(stft[t][freq + k] + 1);
+          }
 
+          if (isNaN(amp)) {
+            amp = 1.0;
+          }
+          colors = colors.concat(Array(18).fill(amp / freqhop*1));
+        }
+      }
+      // console.log("colors", colors);
 
       const gl = freqcanvas.getContext("webgl");
 
@@ -187,7 +207,59 @@
     };
   }
 
+  async function getWavData() {
+    let data: any = await invoke("get_wav_data", { path: selectedRecording });
+    console.log(data);
+
+    let id = 0;
+    let renderPlot = () => {
+      line = new WebglLine(new ColorRGBA(1, 0, 0, 1), data[0].length);
+
+      webglp.removeAllLines();
+      webglp.addLine(line);
+      line.arrangeX();
+      for (let i = 0; i < data[0].length; i++) {
+        line.setY(i, data[0][i] * 1);
+      }
+
+      let fftsize = data[1].length;
+      freqline = new WebglLine(new ColorRGBA(1, 0, 0, 1), data[1].length);
+      freqwebglp.removeAllLines();
+      freqwebglp.addLine(freqline);
+      freqline.arrangeX();
+      let minfreq = 20.0;
+      let maxfreq = 20000.0;
+      let fr = 44100.0 / fftsize;
+
+      let id = [];
+      for (let i = 1; i < fftsize; i++) {
+      let y = linlog(i, minfreq, maxfreq);
+        freqline.setY(
+          i,
+          Math.log10(data[1][i] + 0.001) * 0.3 - 0.4
+        );
+        // freqline.setY(i, Math.log10(data[1][i] + 0.001)*0.3 - 0.4);
+        // freqline.setY(loglin(i, minfreq, maxfreq), data[1][i]*0.1);
+
+        id.push(linlog(i, minfreq, maxfreq));
+      }
+
+      console.log(id, id[1] - id[0], id[id.length-1], id.length);
+
+      webglp.update();
+      freqwebglp.update();
+    };
+    id = requestAnimationFrame(renderPlot);
+    console.log(Math.max(data[1]));
+
+    return () => {
+      renderPlot = () => {};
+      cancelAnimationFrame(id);
+    };
+  }
+
   $: selectedRecording, getData();
+  // $: selectedRecording, getWavData();
 
   export let isDragging = false;
   let timePosition = 0;

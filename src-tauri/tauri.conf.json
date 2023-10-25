@@ -48,8 +48,8 @@
         "fullscreen": false,
         "resizable": true,
         "title": "audio-recorder",
-        "width": 800,
-        "height": 600
+        "width": 700,
+        "height": 440
       }
     ]
   }
