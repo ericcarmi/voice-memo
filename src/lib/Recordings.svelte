@@ -5,15 +5,15 @@
 
   export let recordings: Record<string, Recording>;
   export let uid: number;
+  export let sortedRecordings: Array<Array<string>> = [];
 
   export let prefix = ""
   export let counter = 0;
 
-  $: prefix, console.log(prefix)
 
   async function updateFileName(oldname: string, newname: string) {
-    console.log(oldname);
-    console.log(newname);
+    // console.log(oldname);
+    // console.log(newname);
 
     let r = await renameFile(
       "assets/" + oldname + ".wav",
@@ -29,6 +29,7 @@
 
   let isRecording = false;
 
+
   async function record() {
     if (isRecording) return;
     isRecording = true;
@@ -42,9 +43,11 @@
       fname = prefix + counter + ".wav"
       counter += 1;
     }
-    console.log(fname)
 
     recordings[fname] = { created: date, uid: uid };
+    // add newest to front
+    sortedRecordings = [[fname, date], ...sortedRecordings]
+
     await invoke("record", {
       name: fname,
     });
@@ -62,9 +65,9 @@
 </script>
 
 <div class="wrapper">
-  <p>recordings</p>
+  <p>recordings{sortedRecordings.length}</p>
   <div class="list">
-    {#each Object.entries(recordings) as recording}
+    {#each sortedRecordings as recording, i}
       <div
         class="recording"
         data-attribute={selectedRecording === recording[0]}
@@ -76,7 +79,7 @@
         <input
           disabled={selectedRecording !== recording[0]}
           class="filename"
-          value={recording[0].replace(".wav","")}
+          bind:value={recording[0]}
           on:focus={(e) => {
             oldName = e.currentTarget.value;
           }}
@@ -98,7 +101,7 @@
               updateFileName(oldName, tempName);
           }}
         />
-        <span>{recording[1]["created"].split('T')[0] + " " + recording[1].created.split('T')[1].split('.')[0]}</span>
+        <span>{recording[1].split('T')[0] + " " + recording[1].split('T')[1].split('.')[0]}</span>
       </div>
     {/each}
   </div>

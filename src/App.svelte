@@ -7,10 +7,10 @@
   import type { Recording } from "./lib/types.svelte";
   import Menu from "./lib/Menu.svelte";
 
-
-  let prefix = ""
+  let prefix = "";
   let counter = 0;
   let recordings: Record<string, Recording> = {};
+  let sortedRecordings: Array<Array<string>> = [];
   let uid = 0;
   let entries: any;
   let data: Array<number> = [];
@@ -30,9 +30,16 @@
           created: meta,
           uid: uid,
         };
+        sortedRecordings = [[entry["name"], meta], ...sortedRecordings];
+
         uid += 1;
       }
     }
+    sortedRecordings.sort(function (a, b) {
+      var c = Date.parse(a[1]);
+      var d = Date.parse(b[1]);
+      return c - d;
+    }).reverse();
   });
   let selectedRecording = "";
   let isDragging = false;
@@ -58,9 +65,16 @@
     }}
     on:mouseup={() => (isDragging = false)}
   >
-  <div style='display:flex; flex-direction: column;'>
-    <Menu bind:counter={counter} bind:prefix={prefix}/>
-    <Recordings {recordings} {uid} bind:selectedRecording  bind:counter bind:prefix />
+    <div style="display:flex; flex-direction: column;">
+      <Menu bind:counter bind:prefix />
+      <Recordings
+        {recordings}
+        bind:sortedRecordings
+        {uid}
+        bind:selectedRecording
+        bind:counter
+        bind:prefix
+      />
     </div>
     <TimePlot bind:selectedRecording bind:isDragging />
   </div>
