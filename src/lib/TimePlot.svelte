@@ -268,6 +268,7 @@
 <div>
   <canvas id="freq_canvas" />
   <canvas id="time_canvas" />
+  <!--
   <div
     id="drag-container"
     role="button"
@@ -283,6 +284,7 @@
       on:mouseup={() => (isDragging = false)}
     />
   </div>
+-->
 </div>
 
 <style>

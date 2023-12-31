@@ -1,6 +1,6 @@
 <script lang="ts">
   import { invoke } from "@tauri-apps/api/tauri";
-  import { readDir, BaseDirectory, renameFile } from "@tauri-apps/api/fs";
+  import { BaseDirectory, renameFile } from "@tauri-apps/api/fs";
   import type { Recording } from "./types.svelte";
 
   export let recordings: Record<string, Recording>;
@@ -65,9 +65,9 @@
 </script>
 
 <div class="wrapper">
-  <p>recordings{sortedRecordings.length}</p>
+  <p>recordings({sortedRecordings.length})</p>
   <div class="list">
-    {#each sortedRecordings as recording, i}
+    {#each sortedRecordings as recording}
       <div
         class="recording"
         data-attribute={selectedRecording === recording[0]}
@@ -93,11 +93,7 @@
               tempName = e.currentTarget.value;
             }
           }}
-          on:change={(e) => {
-            // tempName = e.currentTarget.value;
-          }}
-          on:blur={(e) => {
-            // blur is equivalent to pressing enter? or escape? big difference, not sure which one to use
+          on:blur={() => {
               updateFileName(oldName, tempName);
           }}
         />
