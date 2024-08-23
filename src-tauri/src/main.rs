@@ -5,7 +5,7 @@
 use clap::Parser;
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::{FromSample, Sample, Stream};
-use std::fs::Metadata;
+use std::fs::{self, Metadata};
 // use std::os::windows::process::CommandExt;
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -133,6 +133,7 @@ fn main() {
             file_metadata,
             get_wav_data,
             get_stft_data,
+            get_wavs,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -230,6 +231,21 @@ fn iso8601(st: &std::time::SystemTime) -> String {
     format!("{}", dt.format("%+"))
     // format!("{}", dt.format("%Y-%m-%d--%H:%M:%S"))
     // formats like "2001-07-08T00:34:60.026490+09:30"
+}
+
+#[tauri::command]
+fn get_wavs(app_handle: tauri::AppHandle) -> Vec<String> {
+    let p = app_handle
+        .path_resolver()
+        .resource_dir()
+        .expect("failed to get resource dir")
+        .join("assets");
+    let files = fs::read_dir(p).unwrap();
+    let mut strings = vec![];
+    for file in files.into_iter() {
+        strings.push(file.unwrap().file_name().into_string().unwrap());
+    }
+    strings
 }
 
 #[tauri::command]

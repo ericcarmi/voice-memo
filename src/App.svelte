@@ -6,6 +6,7 @@
   import { readDir, BaseDirectory } from "@tauri-apps/api/fs";
   import type { Recording } from "./lib/types.svelte";
   import Menu from "./lib/Menu.svelte";
+  import { path } from "@tauri-apps/api";
 
   let prefix = "";
   let counter = 0;
@@ -15,22 +16,33 @@
   let entries: any;
   let data: Array<number> = [];
   onMount(async () => {
-    entries = await readDir("assets", {
-      dir: BaseDirectory.Resource,
-      recursive: true,
-    });
-    for (const entry of entries) {
-      if (entry["name"].includes(".wav") && !entry["name"].includes("input")) {
-        let meta: string = await invoke("file_metadata", {
-          path: entry["path"],
-        });
-        // console.log(entry, meta);
+    // entries = await readDir("assets", {
+    //   dir: BaseDirectory.Resource,
+    //   recursive: true,
+    // });
+    entries = await invoke("get_wavs");
+    // console.log(entries);
 
-        recordings[entry["name"]] = {
-          created: meta,
-          uid: uid,
-        };
-        sortedRecordings = [[entry["name"], meta], ...sortedRecordings];
+    let dir = await path.resourceDir();
+    if (dir.includes("\\")) {
+      dir += "assets\\";
+    } else {
+      dir += "assets/";
+    }
+    // console.log(dir);
+
+    for (const entry of entries) {
+      if (entry.includes(".wav")) {
+        let meta: string = await invoke("file_metadata", {
+          path: dir + entry,
+        });
+        console.log(entry, meta);
+
+        // recordings[entry["name"]] = {
+        //   created: meta,
+        //   uid: uid,
+        // };
+        sortedRecordings = [[entry, meta], ...sortedRecordings];
 
         uid += 1;
       }

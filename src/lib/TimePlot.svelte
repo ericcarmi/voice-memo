@@ -52,7 +52,7 @@
   });
 
   async function getWavData() {
-    console.log(selectedRecording);
+    if (selectedRecording === "") return;
 
     let data: any = await invoke("get_stft_data", {
       fileName: selectedRecording,
@@ -109,7 +109,6 @@
       //   }
       //   col += 1;
       // }
-      console.log(T);
 
       var row = 0;
       var col = 0;
