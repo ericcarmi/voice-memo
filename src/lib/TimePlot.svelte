@@ -1,22 +1,31 @@
 <script lang="ts">
   import { invoke } from "@tauri-apps/api/tauri";
   import { onMount } from "svelte";
-  import { WebglPlot, WebglLine, ColorRGBA, WebglSquare } from "webgl-plot";
-  import { loglin, linlog } from "./types.svelte";
+  import { WebglPlot, WebglLine, ColorRGBA } from "webgl-plot";
+  // import { loglin, linlog } from "./types.svelte";
+
+  function canvas2stft(
+    fft_size: number,
+    time_segments: number,
+    row: number,
+    col: number,
+  ) {
+    // needs to hop around 1 dimensional data
+    return col * fft_size + row;
+  }
 
   let webglp: WebglPlot;
   let line: WebglLine;
   export let selectedRecording: string;
-  let squ = new WebglSquare(new ColorRGBA(1, 0, 0, 1));
-
-  let freqwebglp: WebglPlot;
-  let freqline: WebglLine;
 
   let canvasMain: any;
-  let ctx: any;
+  let ctx: CanvasRenderingContext2D;
   let freqcanvas: any;
-  export const freq = 420;
+  export const freq = 440;
   export const amp = 1;
+
+  let width = 400;
+  let height = 180;
 
   onMount(() => {
     canvasMain = document.getElementById("time_canvas");
@@ -34,182 +43,20 @@
     freqcanvas = document.getElementById("freq_canvas");
     // freqcanvas.width = freqcanvas.clientWidth * devicePixelRatio;
     // freqcanvas.height = freqcanvas.clientHeight * devicePixelRatio;
-    freqcanvas.width = 400;
-    freqcanvas.height = 200;
+    freqcanvas.width = width;
+    freqcanvas.height = height;
 
-    freqwebglp = new WebglPlot(freqcanvas);
+    // freqwebglp = new WebglPlot(freqcanvas);
 
-    ctx = freqcanvas.getContext("2d");
+    ctx = freqcanvas.getContext("2d", { willReadFrequently: true });
   });
 
-  async function getData() {
-    let data: any = await invoke("get_stft_data", { path: selectedRecording });
-    console.log(data);
-
-    let id = 0;
-    let renderPlot = () => {
-      line = new WebglLine(new ColorRGBA(1, 0, 0, 1), data[0].length);
-
-      webglp.removeAllLines();
-      webglp.addLine(line);
-      line.arrangeX();
-      for (let i = 0; i < data[0].length; i+=32) {
-        line.setY(i, data[0][i] * 1);
-      }
-      webglp.update();
-
-      let stft = data[1];
-      let freqs = [];
-      let fftsize = stft[0].length;
-
-      let twidth = 2 / stft.length;
-      let fwidth = 2 / fftsize;
-      let vertices: any = [];
-      let colors: Array<number> = [];
-      // console.log(stft.length * fftsize, freqcanvas.width, freqcanvas.height);
-      let freqhop = 20;
-
-      for (let t = 0; t < stft.length; t += 1) {
-        for (let freq = 0; freq < fftsize; freq += freqhop) {
-          // freqs.push(stft[t][freq]);
-
-          let x1 = -1.0 + twidth * t;
-          let y1 = -1.0 + fwidth * freq;
-          let x2 = -1.0 + twidth * (t + 1);
-          let y2 = -1.0 + fwidth * freq;
-          let x3 = -1.0 + twidth * t;
-          let y3 = -1.0 + (fwidth + freqhop) * (freq + 1);
-          let x4 = -1.0 + twidth * (t + 1);
-          let y4 = -1.0 + (fwidth + freqhop) * (freq + 1);
-          vertices.push(
-            x1,
-            y1,
-            0.0,
-            x2,
-            y2,
-            0.0,
-            x3,
-            y3,
-            0.0,
-            x2,
-            y2,
-            0.0,
-            x3,
-            y3,
-            0.0,
-            x4,
-            y4,
-            0.0
-          );
-          let amp = 0.0;
-          for (let k = 0; k < freqhop; k++) {
-            amp += Math.log10(stft[t][freq + k] + 1);
-          }
-
-          if (isNaN(amp)) {
-            amp = 1.0;
-          }
-          colors = colors.concat(Array(18).fill(amp / freqhop*1));
-        }
-      }
-      // console.log("colors", colors);
-
-      const gl = freqcanvas.getContext("webgl");
-
-      // var vertices = [
-      //   -1.0, -1.0, 0.0,
-      //   -1.0, -0.7, 0.0,
-      //   -0.7, -1.0, 0.0,
-      //   -1.0, -0.7, 0.0,
-      //   -0.7, -1.0, 0.0,
-      //   -0.7, -0.7, 0.0,
-      // ];
-      // var colors = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1];
-
-      // var indices = [2, 2, 3];
-
-      // Create an empty buffer object to store the vertex buffer
-      var vertex_buffer = gl.createBuffer();
-      gl.bindBuffer(gl.ARRAY_BUFFER, vertex_buffer);
-      gl.bufferData(
-        gl.ARRAY_BUFFER,
-        new Float32Array(vertices),
-        gl.STATIC_DRAW
-      );
-      gl.bindBuffer(gl.ARRAY_BUFFER, null);
-
-      // Create an empty buffer object and store Index data
-      // var Index_Buffer = gl.createBuffer();
-      // gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, Index_Buffer);
-      // gl.bufferData(
-      //   gl.ELEMENT_ARRAY_BUFFER,
-      //   new Uint16Array(indices),
-      //   gl.STATIC_DRAW
-      // );
-      // gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
-
-      // Create an empty buffer object and store color data
-      var color_buffer = gl.createBuffer();
-      gl.bindBuffer(gl.ARRAY_BUFFER, color_buffer);
-      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
-
-      var vertCode =
-        "attribute vec3 coordinates;" +
-        "attribute vec3 color;" +
-        "varying vec3 vColor;" +
-        "void main(void) {" +
-        "gl_Position = vec4(coordinates, 1.0);" +
-        "vColor = color;" +
-        "}";
-
-      var vertShader = gl.createShader(gl.VERTEX_SHADER);
-      gl.shaderSource(vertShader, vertCode);
-      gl.compileShader(vertShader);
-
-      var fragCode =
-        "precision mediump float;" +
-        "varying vec3 vColor;" +
-        "void main(void) {" +
-        "gl_FragColor = vec4(vColor, 1.);" +
-        "}";
-
-      var fragShader = gl.createShader(gl.FRAGMENT_SHADER);
-
-      gl.shaderSource(fragShader, fragCode);
-      gl.compileShader(fragShader);
-      var shaderProgram = gl.createProgram();
-      gl.attachShader(shaderProgram, vertShader);
-      gl.attachShader(shaderProgram, fragShader);
-      gl.linkProgram(shaderProgram);
-      gl.useProgram(shaderProgram);
-      gl.bindBuffer(gl.ARRAY_BUFFER, vertex_buffer);
-
-      var coord = gl.getAttribLocation(shaderProgram, "coordinates");
-
-      gl.vertexAttribPointer(coord, 3, gl.FLOAT, false, 0, 0);
-      gl.enableVertexAttribArray(coord);
-      gl.bindBuffer(gl.ARRAY_BUFFER, color_buffer);
-      var color = gl.getAttribLocation(shaderProgram, "color");
-      gl.vertexAttribPointer(color, 3, gl.FLOAT, false, 0, 0);
-      gl.enableVertexAttribArray(color);
-      gl.clearColor(0, 0, 0, 1);
-      // gl.enable(gl.DEPTH_TEST);
-      gl.clear(gl.COLOR_BUFFER_BIT);
-      gl.viewport(0, 0, freqcanvas.width, freqcanvas.height);
-
-      gl.drawArrays(gl.TRIANGLES, 0, vertices.length / 3);
-    };
-    id = requestAnimationFrame(renderPlot);
-
-    return () => {
-      renderPlot = () => {};
-      cancelAnimationFrame(id);
-    };
-  }
-
   async function getWavData() {
-    let data: any = await invoke("get_wav_data", { path: selectedRecording });
-    console.log(data);
+    console.log(selectedRecording);
+
+    let data: any = await invoke("get_stft_data", {
+      fileName: selectedRecording,
+    });
 
     let id = 0;
     let renderPlot = () => {
@@ -221,36 +68,95 @@
       for (let i = 0; i < data[0].length; i++) {
         line.setY(i, data[0][i] * 1);
       }
+      webglp.update();
+      ctx = freqcanvas.getContext("2d", { willReadFrequently: true });
 
-      let fftsize = data[1].length;
-      freqline = new WebglLine(new ColorRGBA(1, 0, 0, 1), data[1].length);
-      freqwebglp.removeAllLines();
-      freqwebglp.addLine(freqline);
-      freqline.arrangeX();
-      let minfreq = 20.0;
-      let maxfreq = 20000.0;
-      let fr = 44100.0 / fftsize;
+      const fftsize = 1024;
+      // number of time slices not necessarily equal to canvas width
+      const T = width / (data[1].length / fftsize);
+      const image = ctx.getImageData(0, 0, width, height);
+      const image_data = image.data;
+      const L = image_data.length;
 
-      let id = [];
-      for (let i = 1; i < fftsize; i++) {
-      let y = linlog(i, minfreq, maxfreq);
-        freqline.setY(
-          i,
-          Math.log10(data[1][i] + 0.001) * 0.3 - 0.4
-        );
-        // freqline.setY(i, Math.log10(data[1][i] + 0.001)*0.3 - 0.4);
-        // freqline.setY(loglin(i, minfreq, maxfreq), data[1][i]*0.1);
+      /* 
+        test case -- bottom half is white, upper half magenta
+        weird indexing because image array goes horizontally but stft is drawn vertically first, then horizontally, all rows for one column, shift column
+      */
+      // var row = 0;
+      // var col = 0;
+      // for (let i = 0; i < L; i += 4) {
+      //   // row = i * height + col;
+      //   // console.log(row, col);
+      //   // to do this the right way, convert index to frequency
+      //   // just like the zoom issue, it is easier if you make functions to transform between data and visual axis
+      //   // if data coordinate is fractional, do simple average
 
-        id.push(linlog(i, minfreq, maxfreq));
+      //   if (col > width / 2 && row < height / 2) {
+      //     image_data[i] = 255;
+      // image_data[i] = (row * col) / 100;
+      //     image_data[i + 1] = 0;
+      //     image_data[i + 2] = 255;
+      //     image_data[i + 3] = 255;
+      //   } else {
+      //     image_data[i] = 255;
+      //     image_data[i + 1] = 255;
+      //     image_data[i + 2] = 255;
+      //     image_data[i + 3] = 255;
+      //   }
+      //   if ((i / 4) % width == width - 1) {
+      //     row += 1;
+      //     col = 0;
+      //   }
+      //   col += 1;
+      // }
+      console.log(T);
+
+      var row = 0;
+      var col = 0;
+      let index = 0;
+      let amp = 0;
+      let frac = 0;
+      let int = 0;
+      let scalar = 1000;
+      for (let i = 0; i < L; i += 4) {
+        // row = i * height + col;
+        // console.log(row, col);
+        // to do this the right way, convert index to frequency
+        // just like the zoom issue, it is easier if you make functions to transform between data and visual axis
+        // if data coordinate is fractional, do simple average
+        // not just a simple conversion from matrix to matrix
+        // first get row/col of canvas, then convert to 1d representation of stft
+
+        // index = canvas2stft(fftsize, T, row, col);
+        // index = 0;
+        // console.log(index, fftsize, row, col, data[1][index]);
+
+        col += 1;
+        index = (col * fftsize) / T + row;
+        frac = index % 1;
+        int = (col * fftsize) / Math.floor(T) + row;
+
+        if (frac !== 0) {
+          amp =
+            data[1][int + 1] * scalar * frac +
+            data[1][int] * scalar * (1 - frac);
+        } else {
+          amp = data[1][index] * scalar;
+        }
+
+        image_data[i] = amp;
+        image_data[i + 1] = 0;
+        image_data[i + 2] = 0;
+        image_data[i + 3] = 255;
+        if ((i / 4) % width == width - 1) {
+          row += 1;
+          col = 0;
+        }
       }
 
-      console.log(id, id[1] - id[0], id[id.length-1], id.length);
-
-      webglp.update();
-      freqwebglp.update();
+      ctx.putImageData(image, 0, 0);
     };
     id = requestAnimationFrame(renderPlot);
-    console.log(Math.max(data[1]));
 
     return () => {
       renderPlot = () => {};
@@ -258,11 +164,7 @@
     };
   }
 
-  $: selectedRecording, getData();
-  // $: selectedRecording, getWavData();
-
-  export let isDragging = false;
-  let timePosition = 0;
+  $: selectedRecording, getWavData();
 </script>
 
 <div>
@@ -291,20 +193,10 @@
   canvas {
     width: 400px;
     height: 180px;
-    border: 2px solid rgb(0, 100, 0);
+    border: 1px solid rgb(40, 40, 40);
   }
-  #drag-container {
-    background: #222222;
-    height: 20px;
-    display: flex;
-    cursor: pointer;
-  }
-  #draggable {
-    background: rgb(0, 100, 0);
-    width: 10px;
-    height: 20px;
-    position: relative;
-    cursor: pointer;
+  #freq_canvas {
+    transform: scale(1, -1);
   }
   div {
     user-select: none;

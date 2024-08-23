@@ -35,11 +35,13 @@
         uid += 1;
       }
     }
-    sortedRecordings.sort(function (a, b) {
-      var c = Date.parse(a[1]);
-      var d = Date.parse(b[1]);
-      return c - d;
-    }).reverse();
+    sortedRecordings
+      .sort(function (a, b) {
+        var c = Date.parse(a[1]);
+        var d = Date.parse(b[1]);
+        return c - d;
+      })
+      .reverse();
   });
   let selectedRecording = "";
   let isDragging = false;
@@ -76,7 +78,7 @@
         bind:prefix
       />
     </div>
-    <TimePlot bind:selectedRecording bind:isDragging />
+    <TimePlot bind:selectedRecording />
   </div>
 </main>
 

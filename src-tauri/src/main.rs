@@ -8,6 +8,7 @@ use cpal::{FromSample, Sample, Stream};
 use std::fs::Metadata;
 // use std::os::windows::process::CommandExt;
 use std::path::PathBuf;
+use std::str::FromStr;
 use std::sync::Arc;
 use std::time::SystemTime;
 // use tauri::api::process::Command as CMD;
@@ -20,8 +21,6 @@ use tauri::command::CommandItem;
 use tauri::State;
 use tauri::{Manager, Window};
 
-mod database;
-
 struct WavMetadata {
     created: &'static str,
     sample_rate: i32,
@@ -32,7 +31,6 @@ struct WavMetadata {
 struct Payload {
     message: String,
 }
-
 const INPUT_WAV_PATH: &str = "assets/input.wav";
 const ASSETS_PATH: &str = "assets/";
 // const OUTPUT_WAV_PATH: &str = "assets/output.wav";
@@ -73,7 +71,7 @@ fn main() {
                 .default_input_config()
                 .expect("Failed to get default input config");
 
-            let path: &str = INPUT_WAV_PATH.clone();
+            let path: &str = INPUT_WAV_PATH;
 
             let spec = wav_spec_from_config(&config);
             let writer0 = hound::WavWriter::create(".blank.wav", spec).expect("writer failed");
@@ -115,7 +113,7 @@ fn main() {
                 .default_input_config()
                 .expect("Failed to get default input config");
 
-            let path: &str = INPUT_WAV_PATH.clone();
+            let path: &str = INPUT_WAV_PATH;
 
             let spec = wav_spec_from_config(&config);
 
@@ -126,27 +124,12 @@ fn main() {
         }))
         .setup(|app| {
             let main_window = app.get_window("main").unwrap();
-            if let Ok(items) = database::get_all(&app.app_handle()) {
-                if items[2] == "true" {
-                    main_window.set_always_on_top(true);
-                } else {
-                    main_window.set_always_on_top(false);
-                }
-            };
-            main_window.set_always_on_top(true);
+            // main_window.set_always_on_top(true);
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
             record,
             stop_recording,
-            always_on_top_true,
-            always_on_top_false,
-            set_ipc,
-            get_ipc,
-            get_prefs,
-            set_accent,
-            set_dark_mode,
-            set_always_on_top,
             file_metadata,
             get_wav_data,
             get_stft_data,
@@ -208,53 +191,6 @@ where
             }
         }
     }
-}
-
-#[tauri::command]
-fn set_ipc(name: &str, ipc: State<IPCstring>) {
-    let mut newipc = ipc.0.lock().unwrap();
-    *newipc = name.to_string();
-}
-
-#[tauri::command]
-fn get_prefs(app_handle: tauri::AppHandle, window: Window) {
-    if let Ok(items) = database::get_all(&app_handle) {
-        window.emit("prefs", items).expect("failed to emit event");
-    };
-}
-
-#[tauri::command]
-fn set_accent(accent: &str, app_handle: tauri::AppHandle) {
-    let r = database::set_accent(accent.to_string(), &app_handle);
-}
-#[tauri::command]
-fn set_dark_mode(dark_mode: &str, app_handle: tauri::AppHandle) {
-    let dark = dark_mode == "dark"; // goes to false if not
-    let r = database::set_dark_mode(dark, &app_handle);
-}
-#[tauri::command]
-fn set_always_on_top(on_top: &str, app_handle: tauri::AppHandle) {
-    let top = on_top == "true";
-    let r = database::set_on_top(top, &app_handle);
-}
-
-#[tauri::command]
-fn get_ipc(ipc: State<IPCstring>, window: Window) {
-    let newipc = ipc.0.lock().unwrap().clone();
-    let s = newipc.to_string();
-    window
-        .emit("set_initial_ipc", s)
-        .expect("failed to emit event");
-}
-
-#[tauri::command]
-fn always_on_top_false(window: Window) {
-    window.set_always_on_top(false);
-}
-
-#[tauri::command]
-fn always_on_top_true(window: Window) {
-    window.set_always_on_top(true);
 }
 
 #[tauri::command]
@@ -328,15 +264,13 @@ fn record(
 
     let input_path = app_handle
         .path_resolver()
-        .resolve_resource(ASSETS_PATH)
-        .expect("failed to resolve resource")
-        .into_os_string()
-        .into_string()
-        .unwrap();
-    // println!("{:?}", input_path.clone() + "/" + name);
+        .resource_dir()
+        .unwrap()
+        .join("assets")
+        .join(name);
 
     let spec = wav_spec_from_config(&config);
-    let writer0 = hound::WavWriter::create(input_path + "/" + name, spec).expect("writer failed");
+    let writer0 = hound::WavWriter::create(input_path, spec).expect("writer failed");
     *writer = Arc::new(Mutex::new(Some(writer0)));
 
     let writer_2 = writer.clone();
@@ -368,19 +302,21 @@ fn str_from_path(path: PathBuf) -> String {
 }
 
 #[tauri::command]
-fn get_wav_data(path: &str, app_handle: tauri::AppHandle) -> Result<(Vec<f32>, Vec<f32>), &str> {
+fn get_wav_data(
+    file_name: &str,
+    app_handle: tauri::AppHandle,
+) -> Result<(Vec<f32>, Vec<f32>), &str> {
     let mut v = vec![];
     let mut vfft: Vec<f32> = vec![];
 
     let p = app_handle
         .path_resolver()
-        .resolve_resource(ASSETS_PATH)
+        .resource_dir()
         .expect("failed to resolve resource")
-        .into_os_string()
-        .into_string()
-        .unwrap();
+        .join("assets")
+        .join(file_name);
 
-    if let Ok(mut reader) = hound::WavReader::open(p + "/" + path) {
+    if let Ok(mut reader) = hound::WavReader::open(p) {
         let itr = reader.samples::<f32>().into_iter().step_by(1);
         let mut buffer = vec![];
         let len = itr.len();
@@ -408,21 +344,20 @@ fn get_wav_data(path: &str, app_handle: tauri::AppHandle) -> Result<(Vec<f32>, V
 
 #[tauri::command]
 fn get_stft_data(
-    path: &str,
+    file_name: &str,
     app_handle: tauri::AppHandle,
-) -> Result<(Vec<f32>, Vec<Vec<f32>>), &str> {
+) -> Result<(Vec<f32>, Vec<f32>), &str> {
     let mut v = vec![];
-    let mut vstft: Vec<Vec<f32>> = vec![];
+    let mut vstft: Vec<f32> = vec![];
 
-    let p = app_handle
+    let input_path = app_handle
         .path_resolver()
-        .resolve_resource(ASSETS_PATH)
-        .expect("failed to resolve resource")
-        .into_os_string()
-        .into_string()
-        .unwrap();
+        .resource_dir()
+        .unwrap()
+        .join("assets")
+        .join(file_name);
 
-    if let Ok(mut reader) = hound::WavReader::open(p + "/" + path) {
+    if let Ok(mut reader) = hound::WavReader::open(input_path) {
         let itr = reader.samples::<f32>().into_iter().step_by(1);
         let mut buffer = vec![];
         let len = itr.len();
@@ -432,7 +367,7 @@ fn get_stft_data(
             buffer.push(Complex { re: x, im: 0.0f32 })
         }
 
-        let fftsize = 8192;
+        let fftsize = 1024;
         let vstft = stft(buffer.clone(), fftsize, fftsize);
 
         return Ok((v, vstft));
@@ -443,23 +378,21 @@ fn get_stft_data(
     Ok((v, vstft))
 }
 
-fn stft(mut buffer: Vec<Complex<f32>>, size: usize, hop: usize) -> Vec<Vec<f32>> {
+fn stft(mut buffer: Vec<Complex<f32>>, size: usize, hop: usize) -> Vec<f32> {
     let mut planner = FftPlanner::new();
     let fft = planner.plan_fft_forward(size);
 
     let l = buffer.len();
     let num_slices = (l / size);
-    let mut spectra: Vec<Vec<f32>> = vec![];
+    let mut spectra: Vec<f32> = vec![];
     for slice in 0..num_slices {
         let mut x = buffer[slice * size..(slice + 1) * size].to_vec().clone();
 
         fft.process(&mut x);
 
-        let mut v = vec![];
         for i in x[0..size / 2].iter() {
-            v.push(i.norm());
+            spectra.push(i.norm());
         }
-        spectra.push(v);
     }
 
     spectra
