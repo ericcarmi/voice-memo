@@ -62,7 +62,6 @@
   }
 
   export let selectedRecording: string;
-  export let rename_flag: boolean;
 
   let isRecording = false;
   let fname: string;
@@ -119,7 +118,7 @@
           autocomplete="off"
           autocorrect="off"
           autocapitalize="off"
-          spellcheck="off"
+          spellcheck="false"
           class="filename"
           value={recording[0].slice(0, -4)}
           style="z-index:{recording[0] === selectedRecording ? 0 : -1}"
@@ -132,6 +131,7 @@
             } else if (e.key === "Enter") {
               tempName = e.currentTarget.value;
               updateFileName(oldName, tempName);
+              e.currentTarget.blur();
             } else {
               tempName = e.currentTarget.value;
             }
@@ -139,8 +139,8 @@
           on:blur={() => {
             console.log(selectedRecording, tempName);
 
-            selectedRecording !== tempName + ".wav" &&
-              updateFileName(oldName, tempName);
+            selectedRecording !== tempName + ".wav" && tempName !== "";
+            updateFileName(oldName, tempName);
           }}
         />
         <span

@@ -40,7 +40,6 @@
   async function getWavData() {
     if (selectedRecording === "") return;
 
-
     let data: any = await invoke("get_stft_data", {
       fileName: selectedRecording,
     });
@@ -130,7 +129,7 @@
       if (T % 1 === 0) {
         for (let i = 0; i < L; i += 4) {
           col += 1;
-          index = (col * fftsize) / T + row;
+          index = col * fftsize + row;
           let x = data[1][index] * scalar;
           if (!isNaN(x)) {
             amp = Math.log10(x + 1e-6) * 255;
@@ -147,7 +146,7 @@
         }
       } else {
         for (let i = 0; i < L; i += 4) {
-          precise = (col * fftsize + row) / 1;
+          precise = col * fftsize + row;
           int = Math.round(precise + remainder);
           remainder = precise % 1;
           // int2 = Math.ceil(col * fftsize + row);
