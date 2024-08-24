@@ -1,8 +1,8 @@
 <script lang="ts">
   import { invoke } from "@tauri-apps/api/tauri";
-  import { BaseDirectory, renameFile } from "@tauri-apps/api/fs";
   import type { Recording } from "./types.svelte";
   import { path } from "@tauri-apps/api";
+  import { onMount } from "svelte";
 
   export let recordings: Record<string, Recording>;
   export let uid: number;
@@ -11,9 +11,10 @@
   export let prefix = "";
   export let counter = 0;
 
-  async function updateFileName(oldname: string, newname: string) {
-    // console.log(oldname);
-    // console.log(newname);
+  async function get_files() {
+    let entries: Array<string> = await invoke("get_wavs");
+    sortedRecordings = [];
+
     let dir = await path.resourceDir();
     if (dir.includes("\\")) {
       dir += "assets\\";
@@ -21,15 +22,50 @@
       dir += "assets/";
     }
 
-    // let r = await renameFile(dir + oldname, dir + newname, {
-    //   dir: dir,
-    // });
-    // console.log(r)
+    for (const entry of entries) {
+      if (entry.includes(".wav")) {
+        let meta: string = await invoke("file_metadata", {
+          path: dir + entry,
+        });
+        sortedRecordings = [[entry, meta], ...sortedRecordings];
+        uid += 1;
+      }
+    }
+    sortedRecordings
+      .sort(function (a, b) {
+        var c = Date.parse(a[1]);
+        var d = Date.parse(b[1]);
+        return c - d;
+      })
+      .reverse();
+  }
+
+  onMount(async () => {
+    await get_files();
+  });
+
+  async function updateFileName(oldname: string, newname: string) {
+    invoke("rename_file", {
+      old: oldname + ".wav",
+      new: newname + ".wav",
+    })
+      .then(() => {
+        const index = sortedRecordings.findIndex((itm) => {
+          return itm[0] === oldname + ".wav";
+        });
+        sortedRecordings[index][0] = newname + ".wav";
+        selectedRecording = newname + ".wav";
+      })
+      .catch((e) => {
+        console.error(e);
+      });
   }
 
   export let selectedRecording: string;
+  export let rename_flag: boolean;
 
   let isRecording = false;
+  let fname: string;
 
   async function record() {
     if (isRecording) return;
@@ -37,7 +73,6 @@
     let date = new Date().toISOString();
     // let s = date.split("T");
     // const fname = s[0] + "--" + s[1].split(".")[0] + ".wav";
-    let fname;
     if (prefix === "") {
       fname = uid + ".wav";
     } else {
@@ -60,6 +95,7 @@
     await invoke("stop_recording", {
       name: "stop",
     });
+    selectedRecording = fname;
   }
   let tempName = "";
   let oldName = "";
@@ -80,11 +116,15 @@
         }}
       >
         <input
+          autocomplete="off"
+          autocorrect="off"
+          autocapitalize="off"
+          spellcheck="off"
           class="filename"
           value={recording[0].slice(0, -4)}
+          style="z-index:{recording[0] === selectedRecording ? 0 : -1}"
           on:focus={(e) => {
             oldName = e.currentTarget.value;
-            // console.log(oldName);
           }}
           on:keydown={(e) => {
             if (e.key === "Escape") {
@@ -97,7 +137,10 @@
             }
           }}
           on:blur={() => {
-            updateFileName(oldName, tempName);
+            console.log(selectedRecording, tempName);
+
+            selectedRecording !== tempName + ".wav" &&
+              updateFileName(oldName, tempName);
           }}
         />
         <span
@@ -121,13 +164,13 @@
   .list {
     overflow-y: scroll;
     height: 250px;
-    z-index: 1;
   }
   .recording {
     background: #333333;
     border: 1px solid rgb(100, 100, 100);
     cursor: pointer;
-    z-index: 1;
+    position: relative;
+    z-index: 5;
   }
   .recording:hover {
     border: 1px solid rgb(200, 200, 200);
@@ -142,7 +185,7 @@
     background: #333333;
     color: white;
     font-size: 14px;
-    z-index: 0;
+    position: relative;
   }
   span {
     width: 100%;

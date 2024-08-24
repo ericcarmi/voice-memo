@@ -4,16 +4,6 @@
   import { WebglPlot, WebglLine, ColorRGBA } from "webgl-plot";
   // import { loglin, linlog } from "./types.svelte";
 
-  function canvas2stft(
-    fft_size: number,
-    time_segments: number,
-    row: number,
-    col: number
-  ) {
-    // needs to hop around 1 dimensional data
-    return col * fft_size + row;
-  }
-
   let webglp: WebglPlot;
   let line: WebglLine;
   export let selectedRecording: string;
@@ -41,18 +31,15 @@
     line.arrangeX();
 
     freqcanvas = document.getElementById("freq_canvas");
-    // freqcanvas.width = freqcanvas.clientWidth * devicePixelRatio;
-    // freqcanvas.height = freqcanvas.clientHeight * devicePixelRatio;
     freqcanvas.width = width;
     freqcanvas.height = height;
-
-    // freqwebglp = new WebglPlot(freqcanvas);
 
     ctx = freqcanvas.getContext("2d", { willReadFrequently: true });
   });
 
   async function getWavData() {
     if (selectedRecording === "") return;
+
 
     let data: any = await invoke("get_stft_data", {
       fileName: selectedRecording,
@@ -62,7 +49,7 @@
     let renderPlot = () => {
       const fftsize = 512;
       // setting the width here will scale it properly, much easier than dealing with fractional indices (even more complicated due to stft resampling to match image data structure)
-      freqcanvas.width = data[1].length / fftsize
+      freqcanvas.width = data[1].length / fftsize;
 
       const T = width / (data[1].length / fftsize);
 
@@ -82,7 +69,6 @@
       const image = ctx.getImageData(0, 0, width, height);
       const image_data = image.data;
       const L = image_data.length;
-      console.log(data[1].length / fftsize, T);
 
       /* 
         test case -- bottom half is white, upper half magenta
@@ -161,14 +147,13 @@
         }
       } else {
         for (let i = 0; i < L; i += 4) {
-
           precise = (col * fftsize + row) / 1;
           int = Math.round(precise + remainder);
           remainder = precise % 1;
           // int2 = Math.ceil(col * fftsize + row);
           // console.log(int, int2)
 
-          let x = data[1][int] * scalar; //+ data[1][int+1]*scalar/2;
+          let x = data[1][int] * scalar;
           if (!isNaN(x)) {
             amp = Math.log10(x + 1e-6) * 255;
           }
@@ -178,7 +163,6 @@
           image_data[i + 2] = 0;
           image_data[i + 3] = 255;
           col += 1;
-          // if ((i / 4) % width == width - 1) {
           if (col === width) {
             row += 1;
             col = 0;

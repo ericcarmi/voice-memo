@@ -129,11 +129,12 @@ fn main() {
         })
         .invoke_handler(tauri::generate_handler![
             record,
+            get_wavs,
             stop_recording,
             file_metadata,
             get_wav_data,
             get_stft_data,
-            get_wavs,
+            rename_file,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -387,7 +388,6 @@ fn get_stft_data(
 
         let fftsize = 1024;
         let mut vstft = stft(&mut buffer, fftsize, fftsize);
-        // from here, rearrange stft
 
         return Ok((v, vstft));
     } else {
@@ -415,4 +415,17 @@ fn stft(mut buffer: &Vec<Complex<f32>>, size: usize, hop: usize) -> Vec<f32> {
     }
 
     spectra
+}
+
+#[tauri::command]
+fn rename_file(old: &str, new: &str, app_handle: tauri::AppHandle) -> Result<(), String> {
+    let p = app_handle
+        .path_resolver()
+        .resource_dir()
+        .expect("failed to resolve resource")
+        .join("assets");
+
+    let r = fs::rename(p.join(old), p.join(new));
+
+    return r.map_err(|e| e.to_string());
 }

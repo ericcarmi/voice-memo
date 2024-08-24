@@ -3,7 +3,6 @@
   import TimePlot from "./lib/TimePlot.svelte";
   import { invoke } from "@tauri-apps/api/tauri";
   import { onMount } from "svelte";
-  import { readDir, BaseDirectory } from "@tauri-apps/api/fs";
   import type { Recording } from "./lib/types.svelte";
   import Menu from "./lib/Menu.svelte";
   import { path } from "@tauri-apps/api";
@@ -14,55 +13,11 @@
   let sortedRecordings: Array<Array<string>> = [];
   let uid = 0;
   let entries: any;
-  let data: Array<number> = [];
-  onMount(async () => {
-    // entries = await readDir("assets", {
-    //   dir: BaseDirectory.Resource,
-    //   recursive: true,
-    // });
-    entries = await invoke("get_wavs");
-    // console.log(entries);
-
-    let dir = await path.resourceDir();
-    if (dir.includes("\\")) {
-      dir += "assets\\";
-    } else {
-      dir += "assets/";
-    }
-    // console.log(dir);
-
-    for (const entry of entries) {
-      if (entry.includes(".wav")) {
-        let meta: string = await invoke("file_metadata", {
-          path: dir + entry,
-        });
-        // console.log(entry, meta);
-
-        // recordings[entry["name"]] = {
-        //   created: meta,
-        //   uid: uid,
-        // };
-        sortedRecordings = [[entry, meta], ...sortedRecordings];
-
-        uid += 1;
-      }
-    }
-    sortedRecordings
-      .sort(function (a, b) {
-        var c = Date.parse(a[1]);
-        var d = Date.parse(b[1]);
-        return c - d;
-      })
-      .reverse();
-  });
   let selectedRecording = "";
   let isDragging = false;
+  let rename_flag = false;
 
-  // Object.entries(recordings).sort(function (a, b) {
-  //   let x = new Date(b[1].created);
-  //   let y = new Date(a[1].created);
-  //   return x - y;
-  // });
+
 </script>
 
 <main class="container">
@@ -82,9 +37,10 @@
     <div style="display:flex; flex-direction: column;">
       <Menu bind:counter bind:prefix />
       <Recordings
-        {recordings}
-        bind:sortedRecordings
         {uid}
+        {recordings}
+        {rename_flag}
+        bind:sortedRecordings
         bind:selectedRecording
         bind:counter
         bind:prefix
