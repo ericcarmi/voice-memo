@@ -6,6 +6,7 @@ use chrono::{self, DateTime, Utc};
 use clap::Parser;
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::{FromSample, Sample, Stream};
+use std::f32::consts::PI;
 use std::fs::{self, Metadata};
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -326,8 +327,13 @@ fn stft(mut buffer: &Vec<Complex<f32>>, size: usize, hop: usize) -> Vec<f32> {
     let l = buffer.len();
     let num_slices = (l / size);
     let mut spectra: Vec<f32> = vec![];
+    let window = hamming_complex(size);
     for slice in 0..num_slices {
-        let mut x = buffer[slice * size..(slice + 1) * size].to_vec();
+        // let mut x = buffer[slice * size..(slice + 1) * size].to_vec();
+        let mut x = vec![CZERO; size];
+        for i in 0..size {
+            x[i] = buffer[slice * size..(slice + 1) * size][i] * window[i]
+        }
 
         fft.process(&mut x);
 
@@ -352,6 +358,20 @@ fn rename_file(old: &str, new: &str, app_handle: tauri::AppHandle) -> Result<(),
     return r.map_err(|e| e.to_string());
 }
 
+fn hamming(n: usize) -> Vec<f32> {
+    (0..n)
+        .map(|i| (0.54 - 0.46 * (2.0 * PI * (i as f32) / (n as f32)).cos()))
+        .collect()
+}
+fn hamming_complex(n: usize) -> Vec<Complex<f32>> {
+    (0..n)
+        .map(|i| Complex {
+            re: (0.54 - 0.46 * (2.0 * PI * (i as f32) / (n as f32)).cos()),
+            im: 0.0,
+        })
+        .collect()
+}
+
 struct WavMetadata {
     created: &'static str,
     sample_rate: i32,
@@ -366,3 +386,5 @@ struct Mwriter(Mutex<WavWriterHandle>);
 struct NStream(Stream);
 unsafe impl std::marker::Send for NStream {}
 struct Mstream(Mutex<NStream>);
+
+const CZERO: Complex<f32> = Complex { re: 0.0, im: 0.0 };

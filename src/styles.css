@@ -4,8 +4,8 @@
   line-height: 24px;
   font-weight: 400;
 
-  color: #0f0f0f;
-  background-color: #ffffff;
+  color: var(--text-color);
+  background-color: var(--background-color);
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -13,6 +13,18 @@
   -moz-osx-font-smoothing: grayscale;
   -webkit-text-size-adjust: 100%;
   user-select: none;
+
+  --sepia0: #ebd7cb;
+  --sepia1: #ffe0b5;
+  --sepia2: #d4aa7d;
+  --sepia3: #b87d48;
+  --sepia4: #9e6240;
+  --sepia5: #3c2920;
+
+  --border-color: var(--sepia3);
+  --text-color: var(--sepia5);
+  --background-color: var(--sepia1);
+  
 }
 
 body,html {
@@ -26,22 +38,13 @@ body,html {
   text-align: center;
 }
 
-.row {
-  display: flex;
-  justify-content: center;
-}
 
 button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
+  padding: 0.5em 1em;
   font-family: inherit;
-  color: #0f0f0f;
-  background-color: #ffffff;
-  transition: border-color 0.25s;
-  box-shadow: 0 2px 2px rgba(0, 0, 0, 0.2);
+  color: var(--sepia1);
+  background: var(--sepia4);
+  box-shadow: 0 4px 4px var(--sepia5);
 }
 
 button {
@@ -49,7 +52,7 @@ button {
 }
 
 button:hover {
-  border-color: #396cd8;
+  box-shadow: 0 4px 4px var(--sepia2);
 }
 button:active {
   border-color: #396cd8;
@@ -58,24 +61,28 @@ button:active {
 
 input,
 button {
+  border: none;
   outline: none;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    color: #f6f6f6;
-    background-color: #000000;
-  }
-
-  a:hover {
-    color: #24c8db;
-  }
-
-  button {
-    color: #ffffff;
-    background-color: #333333;
-  }
-  button:active {
-    background-color: #333333;
-  }
+input {
+  background: var(--sepia4);
+  color: var(--sepia0);
+  border: 1px solid var(--sepia1);
 }
+
+p {
+  color: var(--text-color);
+}
+
+::-webkit-scrollbar {
+	background: var(--sepia5);
+	appearance: none;
+	-webkit-appearance: none;
+	width: 1em;
+}
+
+::-webkit-scrollbar-thumb {
+	background: var(--sepia2);
+}
+

@@ -7,7 +7,6 @@
   export let recordings: Record<string, Recording>;
   export let uid: number;
   export let sortedRecordings: Array<Array<string>> = [];
-
   export let prefix = "";
   export let counter = 0;
 
@@ -159,31 +158,31 @@
 <style>
   .wrapper {
     width: 200px;
-    border: 1px solid #333333;
   }
   .list {
     overflow-y: scroll;
-    height: 250px;
+    height: 300px;
   }
   .recording {
-    background: #333333;
-    border: 1px solid rgb(100, 100, 100);
+    background: var(--sepia4);
     cursor: pointer;
     position: relative;
     z-index: 5;
   }
   .recording:hover {
-    border: 1px solid rgb(200, 200, 200);
+    background: var(--sepia5);
+  }
+  .recording:hover * {
+    background: var(--sepia5);
   }
   .recording[data-attribute="true"] {
-    border: 1px solid rgb(200, 200, 200);
+    background: var(--sepia5);
+  }
+  .recording[data-attribute="true"] * {
+    background: var(--sepia5);
   }
   .filename {
-    border: none;
-    outline: none;
     height: auto;
-    background: #333333;
-    color: white;
     font-size: 14px;
     position: relative;
   }
@@ -191,6 +190,10 @@
     width: 100%;
     flex-grow: 1;
     font-size: 12px;
-    color: rgb(0, 200, 0);
+    color: var(--sepia1);
+  }
+
+  button {
+    margin-top: 1px;
   }
 </style>

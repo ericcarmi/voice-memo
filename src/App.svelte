@@ -1,23 +1,16 @@
 <script lang="ts">
-  import Recordings from "./lib/Recordings.svelte";
-  import TimePlot from "./lib/TimePlot.svelte";
-  import { invoke } from "@tauri-apps/api/tauri";
-  import { onMount } from "svelte";
+  import Recordings from "./lib/recordings.svelte";
+  import TimePlot from "./lib/plot.svelte";
   import type { Recording } from "./lib/types.svelte";
-  import Menu from "./lib/Menu.svelte";
-  import { path } from "@tauri-apps/api";
+  import Menu from "./lib/menu.svelte";
 
   let prefix = "";
   let counter = 0;
   let recordings: Record<string, Recording> = {};
   let sortedRecordings: Array<Array<string>> = [];
   let uid = 0;
-  let entries: any;
   let selectedRecording = "";
   let isDragging = false;
-  let rename_flag = false;
-
-
 </script>
 
 <main class="container">
@@ -39,7 +32,6 @@
       <Recordings
         {uid}
         {recordings}
-        {rename_flag}
         bind:sortedRecordings
         bind:selectedRecording
         bind:counter

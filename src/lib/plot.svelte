@@ -16,7 +16,9 @@
   export const amp = 1;
 
   let width = 600;
-  let height = 180;
+  let height = 200;
+  const color = { r: 158 / 255, g: 98 / 255, b: 64 / 255 };
+  const background = { r: 255 / 255, g: 224 / 255, b: 181 / 255 };
 
   onMount(() => {
     canvasMain = document.getElementById("time_canvas");
@@ -27,7 +29,7 @@
     webglp = new WebglPlot(canvasMain);
     const numX = 1000;
 
-    line = new WebglLine(new ColorRGBA(1, 0, 0, 1), numX);
+    line = new WebglLine(new ColorRGBA(color.r, color.g, color.b, 1), numX);
     webglp.addLine(line);
     line.arrangeX();
 
@@ -53,15 +55,21 @@
 
       const T = width / (data[1].length / fftsize);
 
-      line = new WebglLine(new ColorRGBA(1, 0.5, 0, 1), data[0].length);
+      line = new WebglLine(
+        new ColorRGBA(color.r, color.g, color.b, 1),
+        data[0].length,
+      );
       webglp.removeAllLines();
       webglp.addLine(line);
       line.arrangeX();
-      var t = 0;
-      for (let i = 0; i < data[0].length; i++) {
-        // t = Math.round(i * T)
+      const ratio = data[0].length / width;
+      console.log(data[0].length, ratio);
 
-        line.setY(i, data[0][i] * 1);
+      for (let i = 0; i < data[0].length; i++) {
+        // console.log(Math.round(ratio * i), data[0][Math.round(ratio * i)]);
+
+        // line.setY(i, data[0][Math.round(ratio * i)]);
+        line.setY(i, data[0][i]);
       }
       webglp.update();
       ctx = freqcanvas.getContext("2d", { willReadFrequently: true });
@@ -129,19 +137,18 @@
       let scalar = 255;
       if (T % 1 === 0) {
         for (let i = 0; i < L; i += 4) {
-          const r = Math.floor(loglin(row + 1, 1, height * 20));
+          const r = Math.floor(loglin(row + 1, 1, height));
           index = col * fftsize + r;
           let x = data[1][index];
           if (!isNaN(x)) {
             amp = Math.log10(x + 1e-6) * scalar;
           }
 
-          col += 1;
-
-          image_data[i] = amp;
-          image_data[i + 1] = amp / 2;
-          image_data[i + 2] = 0;
+          image_data[i] = amp * color.r;
+          image_data[i + 1] = amp * color.g;
+          image_data[i + 2] = amp * color.b;
           image_data[i + 3] = 255;
+          col += 1;
           if (col === width) {
             row += 1;
             col = 0;
@@ -161,9 +168,9 @@
             amp = Math.log10(x + 1e-6) * scalar;
           }
 
-          image_data[i] += amp;
-          image_data[i + 1] += amp / 2;
-          image_data[i + 2] = 0;
+          image_data[i] = amp * color.r;
+          image_data[i + 1] = amp * color.g;
+          image_data[i + 2] = amp * color.b;
           image_data[i + 3] = 255;
           col += 1;
           if (col === width) {
@@ -211,11 +218,12 @@
 <style>
   canvas {
     width: 600px;
-    height: 180px;
-    border: 1px solid rgb(40, 40, 40);
+    height: 200px;
+    background: black;
   }
   #freq_canvas {
     transform: scale(1, -1);
+    margin-top: 1em;
   }
   div {
     user-select: none;

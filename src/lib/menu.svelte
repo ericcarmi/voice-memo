@@ -3,7 +3,7 @@
 	export let counter = 0;
 </script>
 
-<div class='outer'>
+<div class="outer">
 	<div class="wrapper">
 		<span>prefix</span>
 		<input
@@ -39,10 +39,8 @@
 		flex-direction: column;
 	}
 	input {
-		background: #333333;
 		width: 80%;
 		align-self: center;
 		text-align: center;
-		color: white;
 	}
 </style>
