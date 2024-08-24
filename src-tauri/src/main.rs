@@ -2,17 +2,15 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 #![allow(unused)]
 
+use chrono::{self, DateTime, Utc};
 use clap::Parser;
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::{FromSample, Sample, Stream};
 use std::fs::{self, Metadata};
-// use std::os::windows::process::CommandExt;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
 use std::time::SystemTime;
-// use tauri::api::process::Command as CMD;
-use chrono::{self, DateTime, Utc};
 
 use rustfft::{num_complex::Complex, FftPlanner};
 use std::sync::Mutex;
@@ -21,57 +19,20 @@ use tauri::command::CommandItem;
 use tauri::State;
 use tauri::{Manager, Window};
 
-struct WavMetadata {
-    created: &'static str,
-    sample_rate: i32,
-}
-
-// the payload type must implement `Serialize` and `Clone`.
-#[derive(Clone, serde::Serialize)]
-struct Payload {
-    message: String,
-}
-const INPUT_WAV_PATH: &str = "assets/input.wav";
-const ASSETS_PATH: &str = "assets/";
-// const OUTPUT_WAV_PATH: &str = "assets/output.wav";
-
-#[derive(Debug)]
-struct Mbool(Mutex<bool>);
-
-struct AlwaysOnTop(Mutex<bool>);
-
-#[derive(Debug)]
-struct IPCstring(Mutex<String>);
-
-struct Mwriter(Mutex<WavWriterHandle>);
-
-struct NStream(Stream);
-unsafe impl std::marker::Send for NStream {}
-struct Mstream(Mutex<NStream>);
-
 fn main() {
     tauri::Builder::default()
         .manage(Mbool(Default::default()))
         .manage(AlwaysOnTop(Default::default()))
         .manage(Mstream({
-            let opt = Opt::parse();
             let host = cpal::default_host();
 
-            // Set up the input device and stream with the default input config.
-            let device = if opt.device == "default" {
-                host.default_input_device()
-            } else {
-                host.input_devices()
-                    .expect("")
-                    .find(|x| x.name().map(|y| y == opt.device).unwrap_or(false))
-            }
-            .expect("failed to find input device");
+            let device = host
+                .default_input_device()
+                .expect("failed to get default audio device");
 
             let config = device
                 .default_input_config()
                 .expect("Failed to get default input config");
-
-            let path: &str = INPUT_WAV_PATH;
 
             let spec = wav_spec_from_config(&config);
             let writer0 = hound::WavWriter::create(".blank.wav", spec).expect("writer failed");
@@ -96,24 +57,14 @@ fn main() {
             Mutex::new(NStream(stream))
         }))
         .manage(Mwriter({
-            let opt = Opt::parse();
             let host = cpal::default_host();
-
-            // Set up the input device and stream with the default input config.
-            let device = if opt.device == "default" {
-                host.default_input_device()
-            } else {
-                host.input_devices()
-                    .expect("")
-                    .find(|x| x.name().map(|y| y == opt.device).unwrap_or(false))
-            }
-            .expect("failed to find input device");
+            let device = host
+                .default_input_device()
+                .expect("failed to get default audio device");
 
             let config = device
                 .default_input_config()
                 .expect("Failed to get default input config");
-
-            let path: &str = INPUT_WAV_PATH;
 
             let spec = wav_spec_from_config(&config);
 
@@ -138,27 +89,6 @@ fn main() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
-}
-
-#[derive(Parser, Debug)]
-#[command(version, about = "CPAL record_wav example", long_about = None)]
-pub struct Opt {
-    /// The audio device to use
-    #[arg(short, long, default_value_t = String::from("default"))]
-    device: String,
-    // /// Use the JACK host
-    // #[cfg(all(
-    //     any(
-    //         target_os = "linux",
-    //         target_os = "dragonfly",
-    //         target_os = "freebsd",
-    //         target_os = "netbsd",
-    //     ),
-    //     feature = "jack"
-    // ))]
-    // #[arg(short, long)]
-    // #[allow(dead_code)]
-    // jack: bool,
 }
 
 fn sample_format(format: cpal::SampleFormat) -> hound::SampleFormat {
@@ -241,7 +171,6 @@ fn get_wavs(app_handle: tauri::AppHandle) -> Vec<String> {
         .resource_dir()
         .expect("failed to get resource dir")
         .join("assets");
-    println!("{:?}", p);
 
     let files = fs::read_dir(p).unwrap();
     let mut strings = vec![];
@@ -264,18 +193,11 @@ fn record(
     let mut stream = mstream.0.lock().unwrap();
     *nt = true;
 
-    let opt = Opt::parse();
     let host = cpal::default_host();
 
-    // Set up the input device and stream with the default input config.
-    let device = if opt.device == "default" {
-        host.default_input_device()
-    } else {
-        host.input_devices()
-            .expect("")
-            .find(|x| x.name().map(|y| y == opt.device).unwrap_or(false))
-    }
-    .expect("failed to find input device");
+    let device = host
+        .default_input_device()
+        .expect("failed to get default audio device");
 
     let config = device
         .default_input_config()
@@ -429,3 +351,18 @@ fn rename_file(old: &str, new: &str, app_handle: tauri::AppHandle) -> Result<(),
 
     return r.map_err(|e| e.to_string());
 }
+
+struct WavMetadata {
+    created: &'static str,
+    sample_rate: i32,
+}
+
+#[derive(Debug)]
+struct Mbool(Mutex<bool>);
+struct AlwaysOnTop(Mutex<bool>);
+
+struct Mwriter(Mutex<WavWriterHandle>);
+
+struct NStream(Stream);
+unsafe impl std::marker::Send for NStream {}
+struct Mstream(Mutex<NStream>);

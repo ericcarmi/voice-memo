@@ -2,6 +2,7 @@
   import { invoke } from "@tauri-apps/api/tauri";
   import { onMount } from "svelte";
   import { WebglPlot, WebglLine, ColorRGBA } from "webgl-plot";
+  import { linlog, loglin } from "./types.svelte";
   // import { loglin, linlog } from "./types.svelte";
 
   let webglp: WebglPlot;
@@ -125,15 +126,17 @@
       let precise = 0;
       let remainder = 0;
 
-      let scalar = 1;
+      let scalar = 255;
       if (T % 1 === 0) {
         for (let i = 0; i < L; i += 4) {
-          col += 1;
-          index = col * fftsize + row;
-          let x = data[1][index] * scalar;
+          const r = Math.floor(loglin(row + 1, 1, height * 20));
+          index = col * fftsize + r;
+          let x = data[1][index];
           if (!isNaN(x)) {
-            amp = Math.log10(x + 1e-6) * 255;
+            amp = Math.log10(x + 1e-6) * scalar;
           }
+
+          col += 1;
 
           image_data[i] = amp;
           image_data[i + 1] = amp / 2;
@@ -146,19 +149,20 @@
         }
       } else {
         for (let i = 0; i < L; i += 4) {
-          precise = col * fftsize + row;
+          const r = Math.floor(linlog(row + 1, 1, height));
+          precise = col * fftsize + r;
           int = Math.round(precise + remainder);
           remainder = precise % 1;
           // int2 = Math.ceil(col * fftsize + row);
           // console.log(int, int2)
 
-          let x = data[1][int] * scalar;
+          let x = data[1][int];
           if (!isNaN(x)) {
-            amp = Math.log10(x + 1e-6) * 255;
+            amp = Math.log10(x + 1e-6) * scalar;
           }
 
-          image_data[i] = amp;
-          image_data[i + 1] = amp / 2;
+          image_data[i] += amp;
+          image_data[i + 1] += amp / 2;
           image_data[i + 2] = 0;
           image_data[i + 3] = 255;
           col += 1;
