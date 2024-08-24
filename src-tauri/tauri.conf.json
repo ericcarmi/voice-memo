@@ -55,7 +55,7 @@
         "resizable": true,
         "title": "audio-recorder",
         "width": 950,
-        "height": 450
+        "height": 500
       }
     ]
   }
