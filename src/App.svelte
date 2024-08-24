@@ -36,7 +36,7 @@
         let meta: string = await invoke("file_metadata", {
           path: dir + entry,
         });
-        console.log(entry, meta);
+        // console.log(entry, meta);
 
         // recordings[entry["name"]] = {
         //   created: meta,

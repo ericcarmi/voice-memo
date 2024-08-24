@@ -240,6 +240,8 @@ fn get_wavs(app_handle: tauri::AppHandle) -> Vec<String> {
         .resource_dir()
         .expect("failed to get resource dir")
         .join("assets");
+    println!("{:?}", p);
+
     let files = fs::read_dir(p).unwrap();
     let mut strings = vec![];
     for file in files.into_iter() {
@@ -384,7 +386,8 @@ fn get_stft_data(
         }
 
         let fftsize = 1024;
-        let vstft = stft(buffer.clone(), fftsize, fftsize);
+        let mut vstft = stft(&mut buffer, fftsize, fftsize);
+        // from here, rearrange stft
 
         return Ok((v, vstft));
     } else {
@@ -394,7 +397,7 @@ fn get_stft_data(
     Ok((v, vstft))
 }
 
-fn stft(mut buffer: Vec<Complex<f32>>, size: usize, hop: usize) -> Vec<f32> {
+fn stft(mut buffer: &Vec<Complex<f32>>, size: usize, hop: usize) -> Vec<f32> {
     let mut planner = FftPlanner::new();
     let fft = planner.plan_fft_forward(size);
 
@@ -402,7 +405,7 @@ fn stft(mut buffer: Vec<Complex<f32>>, size: usize, hop: usize) -> Vec<f32> {
     let num_slices = (l / size);
     let mut spectra: Vec<f32> = vec![];
     for slice in 0..num_slices {
-        let mut x = buffer[slice * size..(slice + 1) * size].to_vec().clone();
+        let mut x = buffer[slice * size..(slice + 1) * size].to_vec();
 
         fft.process(&mut x);
 

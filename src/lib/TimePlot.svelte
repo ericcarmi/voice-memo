@@ -8,7 +8,7 @@
     fft_size: number,
     time_segments: number,
     row: number,
-    col: number,
+    col: number
   ) {
     // needs to hop around 1 dimensional data
     return col * fft_size + row;
@@ -24,7 +24,7 @@
   export const freq = 440;
   export const amp = 1;
 
-  let width = 400;
+  let width = 600;
   let height = 180;
 
   onMount(() => {
@@ -60,23 +60,29 @@
 
     let id = 0;
     let renderPlot = () => {
-      line = new WebglLine(new ColorRGBA(1, 0, 0, 1), data[0].length);
+      const fftsize = 512;
+      // setting the width here will scale it properly, much easier than dealing with fractional indices (even more complicated due to stft resampling to match image data structure)
+      freqcanvas.width = data[1].length / fftsize
 
+      const T = width / (data[1].length / fftsize);
+
+      line = new WebglLine(new ColorRGBA(1, 0.5, 0, 1), data[0].length);
       webglp.removeAllLines();
       webglp.addLine(line);
       line.arrangeX();
+      var t = 0;
       for (let i = 0; i < data[0].length; i++) {
+        // t = Math.round(i * T)
+
         line.setY(i, data[0][i] * 1);
       }
       webglp.update();
       ctx = freqcanvas.getContext("2d", { willReadFrequently: true });
 
-      const fftsize = 1024;
-      // number of time slices not necessarily equal to canvas width
-      const T = width / (data[1].length / fftsize);
       const image = ctx.getImageData(0, 0, width, height);
       const image_data = image.data;
       const L = image_data.length;
+      console.log(data[1].length / fftsize, T);
 
       /* 
         test case -- bottom half is white, upper half magenta
@@ -91,9 +97,24 @@
       //   // just like the zoom issue, it is easier if you make functions to transform between data and visual axis
       //   // if data coordinate is fractional, do simple average
 
-      //   if (col > width / 2 && row < height / 2) {
+      //   // image_data[i] = (row * col) / 100;
+      //   // image_data[i + 1] = i*i/100000000;
+      //   // image_data[i + 2] = 0;
+      //   // image_data[i + 3] = 255;
+
+      //   // if (col > width / 2 && row < height / 2) {
+      //   //   image_data[i] = 255;
+      //   //   image_data[i + 1] = 0;
+      //   //   image_data[i + 2] = 255;
+      //   //   image_data[i + 3] = 255;
+      //   // } else {
+      //   //   image_data[i] = 255;
+      //   //   image_data[i + 1] = 255;
+      //   //   image_data[i + 2] = 255;
+      //   //   image_data[i + 3] = 255;
+      //   // }
+      //   if (i > 100) {
       //     image_data[i] = 255;
-      // image_data[i] = (row * col) / 100;
       //     image_data[i + 1] = 0;
       //     image_data[i + 2] = 255;
       //     image_data[i + 3] = 255;
@@ -114,42 +135,54 @@
       var col = 0;
       let index = 0;
       let amp = 0;
-      let frac = 0;
       let int = 0;
-      let scalar = 1000;
-      for (let i = 0; i < L; i += 4) {
-        // row = i * height + col;
-        // console.log(row, col);
-        // to do this the right way, convert index to frequency
-        // just like the zoom issue, it is easier if you make functions to transform between data and visual axis
-        // if data coordinate is fractional, do simple average
-        // not just a simple conversion from matrix to matrix
-        // first get row/col of canvas, then convert to 1d representation of stft
+      let int2 = 0;
+      let precise = 0;
+      let remainder = 0;
 
-        // index = canvas2stft(fftsize, T, row, col);
-        // index = 0;
-        // console.log(index, fftsize, row, col, data[1][index]);
+      let scalar = 1;
+      if (T % 1 === 0) {
+        for (let i = 0; i < L; i += 4) {
+          col += 1;
+          index = (col * fftsize) / T + row;
+          let x = data[1][index] * scalar;
+          if (!isNaN(x)) {
+            amp = Math.log10(x + 1e-6) * 255;
+          }
 
-        col += 1;
-        index = (col * fftsize) / T + row;
-        frac = index % 1;
-        int = (col * fftsize) / Math.floor(T) + row;
-
-        if (frac !== 0) {
-          amp =
-            data[1][int + 1] * scalar * frac +
-            data[1][int] * scalar * (1 - frac);
-        } else {
-          amp = data[1][index] * scalar;
+          image_data[i] = amp;
+          image_data[i + 1] = amp / 2;
+          image_data[i + 2] = 0;
+          image_data[i + 3] = 255;
+          if (col === width) {
+            row += 1;
+            col = 0;
+          }
         }
+      } else {
+        for (let i = 0; i < L; i += 4) {
 
-        image_data[i] = amp;
-        image_data[i + 1] = 0;
-        image_data[i + 2] = 0;
-        image_data[i + 3] = 255;
-        if ((i / 4) % width == width - 1) {
-          row += 1;
-          col = 0;
+          precise = (col * fftsize + row) / 1;
+          int = Math.round(precise + remainder);
+          remainder = precise % 1;
+          // int2 = Math.ceil(col * fftsize + row);
+          // console.log(int, int2)
+
+          let x = data[1][int] * scalar; //+ data[1][int+1]*scalar/2;
+          if (!isNaN(x)) {
+            amp = Math.log10(x + 1e-6) * 255;
+          }
+
+          image_data[i] = amp;
+          image_data[i + 1] = amp / 2;
+          image_data[i + 2] = 0;
+          image_data[i + 3] = 255;
+          col += 1;
+          // if ((i / 4) % width == width - 1) {
+          if (col === width) {
+            row += 1;
+            col = 0;
+          }
         }
       }
 
@@ -190,7 +223,7 @@
 
 <style>
   canvas {
-    width: 400px;
+    width: 600px;
     height: 180px;
     border: 1px solid rgb(40, 40, 40);
   }

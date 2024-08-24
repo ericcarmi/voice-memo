@@ -2,6 +2,7 @@
   import { invoke } from "@tauri-apps/api/tauri";
   import { BaseDirectory, renameFile } from "@tauri-apps/api/fs";
   import type { Recording } from "./types.svelte";
+  import { path } from "@tauri-apps/api";
 
   export let recordings: Record<string, Recording>;
   export let uid: number;
@@ -13,10 +14,16 @@
   async function updateFileName(oldname: string, newname: string) {
     // console.log(oldname);
     // console.log(newname);
+    let dir = await path.resourceDir();
+    if (dir.includes("\\")) {
+      dir += "assets\\";
+    } else {
+      dir += "assets/";
+    }
 
-    let r = await renameFile("assets/" + oldname, "assets/" + newname, {
-      dir: BaseDirectory.Resource,
-    });
+    // let r = await renameFile(dir + oldname, dir + newname, {
+    //   dir: dir,
+    // });
     // console.log(r)
   }
 
@@ -77,7 +84,7 @@
           value={recording[0].slice(0, -4)}
           on:focus={(e) => {
             oldName = e.currentTarget.value;
-            console.log(oldName);
+            // console.log(oldName);
           }}
           on:keydown={(e) => {
             if (e.key === "Escape") {
