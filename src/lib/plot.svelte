@@ -16,7 +16,7 @@
   export const amp = 1;
 
   let width = 600;
-  let height = 200;
+  let height = 218;
   const color = { r: 158 / 255, g: 98 / 255, b: 64 / 255 };
   const background = { r: 255 / 255, g: 224 / 255, b: 181 / 255 };
 
@@ -62,8 +62,8 @@
       webglp.removeAllLines();
       webglp.addLine(line);
       line.arrangeX();
-      const ratio = data[0].length / width;
-      console.log(data[0].length, ratio);
+      // const ratio = data[0].length / width;
+      // console.log(data[0].length, ratio);
 
       for (let i = 0; i < data[0].length; i++) {
         // console.log(Math.round(ratio * i), data[0][Math.round(ratio * i)]);
@@ -137,7 +137,9 @@
       let scalar = 255;
       if (T % 1 === 0) {
         for (let i = 0; i < L; i += 4) {
-          const r = Math.floor(loglin(row + 1, 1, height));
+          const r = Math.floor(loglin(row + 1, 1, height))-1;
+          console.log(r, row)
+
           index = col * fftsize + r;
           let x = data[1][index];
           if (!isNaN(x)) {
@@ -218,7 +220,7 @@
 <style>
   canvas {
     width: 600px;
-    height: 200px;
+    height: 218px;
     background: black;
   }
   #freq_canvas {

@@ -1,5 +1,5 @@
 :root {
-  font-family:monospace, Avenir, Helvetica, Arial, sans-serif;
+  font-family: monospace, Avenir, Helvetica, Arial, sans-serif;
   font-size: 16px;
   line-height: 24px;
   font-weight: 400;
@@ -24,10 +24,11 @@
   --border-color: var(--sepia3);
   --text-color: var(--sepia5);
   --background-color: var(--sepia1);
-  
+
 }
 
-body,html {
+body,
+html {
   margin: 0;
   padding: 0;
   user-select: none;
@@ -54,35 +55,43 @@ button {
 button:hover {
   box-shadow: 0 4px 4px var(--sepia2);
 }
+
 button:active {
   border-color: #396cd8;
   background-color: #e8e8e8;
 }
 
-input,
 button {
   border: none;
   outline: none;
 }
 
 input {
+  outline: none;
+  border: 1px solid transparent;
   background: var(--sepia4);
   color: var(--sepia0);
-  border: 1px solid var(--sepia1);
+}
+
+input:focus {
+  border: 1px solid var(--border-color);
 }
 
 p {
   color: var(--text-color);
 }
 
+span {
+  color: var(--text-color);
+}
+
 ::-webkit-scrollbar {
-	background: var(--sepia5);
-	appearance: none;
-	-webkit-appearance: none;
-	width: 1em;
+  background: var(--sepia5);
+  appearance: none;
+  -webkit-appearance: none;
+  width: 1em;
 }
 
 ::-webkit-scrollbar-thumb {
-	background: var(--sepia2);
+  background: var(--sepia2);
 }
-

@@ -100,7 +100,10 @@
 </script>
 
 <div class="wrapper">
-  <p>recordings({sortedRecordings.length})</p>
+  <button on:click={() => (isRecording ? stopRecording() : record())}
+    >{isRecording ? "stop" : "record"}</button>
+    <br/>
+  <span>recordings({sortedRecordings.length})</span>
   <div class="list">
     {#each sortedRecordings as recording}
       <div
@@ -137,9 +140,9 @@
           }}
           on:blur={() => {
             console.log(selectedRecording, tempName);
-
-            selectedRecording !== tempName + ".wav" && tempName !== "";
-            updateFileName(oldName, tempName);
+            if (selectedRecording !== tempName + ".wav" && tempName !== "") {
+              updateFileName(oldName, tempName);
+            }
           }}
         />
         <span
@@ -150,9 +153,6 @@
       </div>
     {/each}
   </div>
-  <button on:click={() => (isRecording ? stopRecording() : record())}
-    >{isRecording ? "stop" : "record"}</button
-  >
 </div>
 
 <style>
@@ -161,13 +161,16 @@
   }
   .list {
     overflow-y: scroll;
-    height: 300px;
+    height: 350px;
   }
   .recording {
     background: var(--sepia4);
     cursor: pointer;
     position: relative;
     z-index: 5;
+  }
+  .recording * {
+    color: var(--sepia1);
   }
   .recording:hover {
     background: var(--sepia5);
@@ -190,10 +193,9 @@
     width: 100%;
     flex-grow: 1;
     font-size: 12px;
-    color: var(--sepia1);
   }
 
   button {
-    margin-top: 1px;
+    margin: 0.5em 0;
   }
 </style>
