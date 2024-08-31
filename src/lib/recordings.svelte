@@ -10,6 +10,10 @@
   export let prefix = "";
   export let counter = 0;
 
+  let page = 1;
+  let num_pages = 1;
+  let items_per_page = 7;
+
   async function get_files() {
     let entries: Array<string> = await invoke("get_wavs");
     sortedRecordings = [];
@@ -41,7 +45,16 @@
 
   onMount(async () => {
     await get_files();
+
+    num_pages = Math.ceil(sortedRecordings.length / items_per_page);
   });
+
+  let displayed_recordings: Array<Array<string>> = [];
+  $: sortedRecordings,
+    (displayed_recordings = sortedRecordings.slice(
+      items_per_page * (page - 1),
+      items_per_page * page,
+    ));
 
   async function updateFileName(oldname: string, newname: string) {
     invoke("rename_file", {
@@ -94,6 +107,8 @@
       name: "stop",
     });
     selectedRecording = fname;
+    sortedRecordings = [[fname], ...sortedRecordings];
+    num_pages = Math.ceil(sortedRecordings.length / items_per_page);
   }
   let tempName = "";
   let oldName = "";
@@ -101,11 +116,26 @@
 
 <div class="wrapper">
   <button on:click={() => (isRecording ? stopRecording() : record())}
-    >{isRecording ? "stop" : "record"}</button>
-    <br/>
-  <span>recordings({sortedRecordings.length})</span>
+    >{isRecording ? "stop" : "record"}</button
+  >
+  <br />
+  <span
+    >recordings({sortedRecordings.length}) -- {page} of {num_pages}
+    <button
+      class="pager"
+      on:click={() => {
+        page = Math.max(1, page - 1);
+      }}>{"<"}</button
+    ><button
+      class="pager"
+      on:click={() => {
+        page = Math.min(num_pages, page + 1);
+      }}>{">"}</button
+    >
+  </span>
+
   <div class="list">
-    {#each sortedRecordings as recording}
+    {#each displayed_recordings as recording}
       <div
         class="recording"
         data-attribute={selectedRecording === recording[0]}
@@ -158,9 +188,9 @@
 <style>
   .wrapper {
     width: 200px;
+    margin-left: 1em;
   }
   .list {
-    overflow-y: scroll;
     height: 350px;
   }
   .recording {
@@ -197,5 +227,10 @@
 
   button {
     margin: 0.5em 0;
+  }
+
+  .pager {
+    padding: 0 4px;
+    margin: 1px;
   }
 </style>

@@ -3653,6 +3653,7 @@ dependencies = [
  "serde_json",
  "tauri",
  "tauri-build",
+ "wav_io",
 ]
 
 [[package]]
@@ -3762,6 +3763,12 @@ name = "wasm-bindgen-shared"
 version = "0.2.92"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "af190c94f2773fdb3729c55b007a722abb5384da03bc0986df4c289bf5567e96"
+
+[[package]]
+name = "wav_io"
+version = "0.1.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b3236ffff9f79a92caa694bbad1cbbd3e13958993f3f983c1066414d487a1d33"
 
 [[package]]
 name = "web-sys"

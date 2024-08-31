@@ -16,9 +16,9 @@
   export const amp = 1;
 
   let width = 600;
-  let height = 218;
+  let height = 200;
   const color = { r: 158 / 255, g: 98 / 255, b: 64 / 255 };
-  const background = { r: 255 / 255, g: 224 / 255, b: 181 / 255 };
+  // const background = { r: 255 / 255, g: 224 / 255, b: 181 / 255 };
 
   onMount(() => {
     canvasMain = document.getElementById("time_canvas");
@@ -130,15 +130,14 @@
       let index = 0;
       let amp = 0;
       let int = 0;
-      let int2 = 0;
       let precise = 0;
       let remainder = 0;
 
       let scalar = 255;
       if (T % 1 === 0) {
         for (let i = 0; i < L; i += 4) {
-          const r = Math.floor(loglin(row + 1, 1, height))-1;
-          console.log(r, row)
+          const r = Math.floor(loglin(row + 1, 1, height)) - 1;
+          console.log(r, row);
 
           index = col * fftsize + r;
           let x = data[1][index];
@@ -158,12 +157,10 @@
         }
       } else {
         for (let i = 0; i < L; i += 4) {
-          const r = Math.floor(linlog(row + 1, 1, height));
+          const r = Math.floor(linlog(row + 1, 1, height)) - 1;
           precise = col * fftsize + r;
           int = Math.round(precise + remainder);
           remainder = precise % 1;
-          // int2 = Math.ceil(col * fftsize + row);
-          // console.log(int, int2)
 
           let x = data[1][int];
           if (!isNaN(x)) {
@@ -198,29 +195,18 @@
 <div>
   <canvas id="freq_canvas" />
   <canvas id="time_canvas" />
-  <!--
-  <div
-    id="drag-container"
-    role="button"
-    tabindex={0}
-    on:mousedown={() => (isDragging = true)}
-    on:mouseup={() => (isDragging = false)}
+  <button
+    on:click={async () => {
+      let r = await invoke("play", { name: selectedRecording });
+      console.log(r);
+    }}>play</button
   >
-    <div
-      id="draggable"
-      role="button"
-      tabindex={0}
-      on:mousedown={() => (isDragging = true)}
-      on:mouseup={() => (isDragging = false)}
-    />
-  </div>
--->
 </div>
 
 <style>
   canvas {
     width: 600px;
-    height: 218px;
+    height: 200px;
     background: black;
   }
   #freq_canvas {
@@ -229,5 +215,12 @@
   }
   div {
     user-select: none;
+    display: flex;
+    flex-direction: column;
+    gap: 1em;
+  }
+  button {
+    width: max-content;
+    align-self: center;
   }
 </style>

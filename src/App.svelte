@@ -27,7 +27,7 @@
     }}
     on:mouseup={() => (isDragging = false)}
   >
-    <div style="display:flex; flex-direction: column;">
+    <div style="display:flex; flex-direction: column; width:240px">
       <Menu bind:counter bind:prefix />
       <Recordings
         {uid}

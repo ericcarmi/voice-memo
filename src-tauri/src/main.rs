@@ -5,7 +5,7 @@
 use chrono::{self, DateTime, Utc};
 use clap::Parser;
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
-use cpal::{FromSample, Sample, Stream};
+use cpal::{FromSample, Sample, SizedSample, Stream, StreamConfig};
 use std::f32::consts::PI;
 use std::fs::{self, Metadata};
 use std::path::PathBuf;
@@ -19,6 +19,9 @@ use std::{fs::metadata, fs::File, io::BufWriter, process::Command};
 use tauri::command::CommandItem;
 use tauri::State;
 use tauri::{Manager, Window};
+
+mod audio;
+use audio::*;
 
 fn main() {
     tauri::Builder::default()
@@ -76,7 +79,7 @@ fn main() {
         }))
         .setup(|app| {
             let main_window = app.get_window("main").unwrap();
-            // main_window.set_always_on_top(true);
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -87,6 +90,7 @@ fn main() {
             get_wav_data,
             get_stft_data,
             rename_file,
+            play,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -358,33 +362,112 @@ fn rename_file(old: &str, new: &str, app_handle: tauri::AppHandle) -> Result<(),
     return r.map_err(|e| e.to_string());
 }
 
-fn hamming(n: usize) -> Vec<f32> {
-    (0..n)
-        .map(|i| (0.54 - 0.46 * (2.0 * PI * (i as f32) / (n as f32)).cos()))
-        .collect()
+#[tauri::command]
+fn play(name: &str, app_handle: tauri::AppHandle) {
+    let host = cpal::default_host();
+
+    let device = host.default_output_device().unwrap();
+
+    let config = device.default_output_config().unwrap();
+    match config.sample_format() {
+        cpal::SampleFormat::I8 => {
+            play_recording::<i8>(name, app_handle);
+        }
+        cpal::SampleFormat::I16 => {
+            play_recording::<i16>(name, app_handle);
+        }
+        cpal::SampleFormat::I32 => {
+            play_recording::<i32>(name, app_handle);
+        }
+        cpal::SampleFormat::I64 => {
+            play_recording::<i64>(name, app_handle);
+        }
+        cpal::SampleFormat::U8 => {
+            play_recording::<u8>(name, app_handle);
+        }
+        cpal::SampleFormat::U16 => {
+            play_recording::<u16>(name, app_handle);
+        }
+        cpal::SampleFormat::U32 => {
+            play_recording::<u32>(name, app_handle);
+        }
+        cpal::SampleFormat::U64 => {
+            play_recording::<u64>(name, app_handle);
+        }
+        cpal::SampleFormat::F32 => {
+            play_recording::<f32>(name, app_handle);
+        }
+        cpal::SampleFormat::F64 => {
+            play_recording::<f64>(name, app_handle);
+        } // sample_format => Err(anyhow::Error::msg(format!(
+        //     "Unsupported sample format '{sample_format}'"
+        // ))),
+        _ => {}
+    }
 }
-fn hamming_complex(n: usize) -> Vec<Complex<f32>> {
-    (0..n)
-        .map(|i| Complex {
-            re: (0.54 - 0.46 * (2.0 * PI * (i as f32) / (n as f32)).cos()),
-            im: 0.0,
-        })
-        .collect()
+
+fn play_recording<T>(name: &str, app_handle: tauri::AppHandle) -> Result<(), String>
+where
+    T: SizedSample + FromSample<f32>,
+{
+    let p = app_handle
+        .path_resolver()
+        .resource_dir()
+        .expect("failed to resolve resource")
+        .join("assets")
+        .join(name);
+
+    let r = hound::WavReader::open(p.clone());
+    let reader = if r.is_ok() {
+        r.unwrap()
+    } else {
+        return Err("derp".to_string());
+    };
+    let spec = reader.spec();
+    let samp_iter = reader.into_samples();
+    let mut samples: Vec<f32> = vec![];
+    for samp in samp_iter {
+        samples.push(samp.unwrap());
+    }
+
+    let host = cpal::default_host();
+    let err_fn = |err| eprintln!("Error building output sound stream: {}", err);
+
+    let device = host.default_output_device().unwrap();
+
+    let conf: StreamConfig = device.default_output_config().unwrap().into();
+    let num_channels = conf.channels as usize;
+    let num_samples = samples.len();
+    println!("{:?}", num_channels);
+    println!("{:?}", conf);
+    println!("{:?}", samples.len());
+
+    let mut t = 0;
+    let stream = device
+        .build_output_stream(
+            &conf.into(),
+            move |output: &mut [T], _: &cpal::OutputCallbackInfo| {
+                // println!("{:?}", output);
+
+                for frame in output.chunks_mut(num_channels) {
+                    for out_sample in frame.iter_mut() {
+                        let v: T = T::from_sample(samples[t]);
+                        println!("{:?}", t);
+                        t += 1;
+                        if t > num_samples {
+                            break;
+                        }
+                        *out_sample = v;
+                    }
+                }
+            },
+            err_fn,
+            None,
+        )
+        .unwrap();
+
+    let r = stream.play();
+    println!("{:?}", r);
+
+    Ok(())
 }
-
-struct WavMetadata {
-    created: &'static str,
-    sample_rate: i32,
-}
-
-#[derive(Debug)]
-struct Mbool(Mutex<bool>);
-struct AlwaysOnTop(Mutex<bool>);
-
-struct Mwriter(Mutex<WavWriterHandle>);
-
-struct NStream(Stream);
-unsafe impl std::marker::Send for NStream {}
-struct Mstream(Mutex<NStream>);
-
-const CZERO: Complex<f32> = Complex { re: 0.0, im: 0.0 };
