@@ -77,11 +77,13 @@
 
   let isRecording = false;
   let fname: string;
+  let date: string;
 
   async function record() {
     if (isRecording) return;
     isRecording = true;
-    let date = new Date().toISOString();
+    date = new Date().toISOString();
+
     // let s = date.split("T");
     // const fname = s[0] + "--" + s[1].split(".")[0] + ".wav";
     if (prefix === "") {
@@ -107,7 +109,7 @@
       name: "stop",
     });
     selectedRecording = fname;
-    sortedRecordings = [[fname], ...sortedRecordings];
+    // sortedRecordings = [[fname, date], ...sortedRecordings];
     num_pages = Math.ceil(sortedRecordings.length / items_per_page);
   }
   let tempName = "";

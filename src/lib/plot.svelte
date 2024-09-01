@@ -137,7 +137,7 @@
       if (T % 1 === 0) {
         for (let i = 0; i < L; i += 4) {
           const r = Math.floor(loglin(row + 1, 1, height)) - 1;
-          console.log(r, row);
+          // console.log(r, row);
 
           index = col * fftsize + r;
           let x = data[1][index];
