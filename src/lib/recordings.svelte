@@ -122,7 +122,7 @@
   >
   <br />
   <span
-    >recordings({sortedRecordings.length}) -- {page} of {num_pages}
+    >({sortedRecordings.length}) --- {page} of {num_pages}
     <button
       class="pager"
       on:click={() => {

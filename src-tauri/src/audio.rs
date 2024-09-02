@@ -86,5 +86,6 @@ pub struct AlwaysOnTop(pub Mutex<bool>);
 pub struct Mwriter(pub Mutex<WavWriterHandle>);
 pub struct NStream(pub Stream);
 pub struct Mstream(pub Mutex<NStream>);
+pub struct MOutStream(pub Mutex<NStream>);
 pub const CZERO: Complex<f32> = Complex { re: 0.0, im: 0.0 };
 unsafe impl std::marker::Send for NStream {}

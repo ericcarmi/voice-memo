@@ -363,7 +363,7 @@ fn rename_file(old: &str, new: &str, app_handle: tauri::AppHandle) -> Result<(),
 }
 
 #[tauri::command]
-fn play(name: &str, app_handle: tauri::AppHandle) {
+fn play(name: &str, app_handle: tauri::AppHandle) -> Result<(), String> {
     let host = cpal::default_host();
 
     let device = host.default_output_device().unwrap();
@@ -404,6 +404,8 @@ fn play(name: &str, app_handle: tauri::AppHandle) {
         // ))),
         _ => {}
     }
+
+    Ok(())
 }
 
 fn play_recording<T>(name: &str, app_handle: tauri::AppHandle) -> Result<(), String>
@@ -438,36 +440,35 @@ where
     let conf: StreamConfig = device.default_output_config().unwrap().into();
     let num_channels = conf.channels as usize;
     let num_samples = samples.len();
-    println!("{:?}", num_channels);
-    println!("{:?}", conf);
-    println!("{:?}", samples.len());
 
-    let mut t = 0;
-    let stream = device
-        .build_output_stream(
-            &conf.into(),
-            move |output: &mut [T], _: &cpal::OutputCallbackInfo| {
-                // println!("{:?}", output);
-
-                for frame in output.chunks_mut(num_channels) {
-                    for out_sample in frame.iter_mut() {
-                        let v: T = T::from_sample(samples[t]);
-                        println!("{:?}", t);
-                        t += 1;
+    tauri::async_runtime::spawn(async move {
+        let sleep = samples.len() as f32 / conf.sample_rate.0 as f32;
+        let mut t = 0;
+        let stream = device
+            .build_output_stream(
+                &conf.into(),
+                move |output: &mut [T], _: &cpal::OutputCallbackInfo| {
+                    for frame in output.chunks_mut(num_channels) {
                         if t > num_samples {
                             break;
                         }
-                        *out_sample = v;
+                        // assuming mono input, will write to both outputs if output is stereo
+                        let v: T = T::from_sample(samples[t]);
+                        for out_sample in frame.iter_mut() {
+                            *out_sample = v;
+                        }
+                        t += 1;
                     }
-                }
-            },
-            err_fn,
-            None,
-        )
-        .unwrap();
+                },
+                err_fn,
+                None,
+            )
+            .unwrap();
 
-    let r = stream.play();
-    println!("{:?}", r);
+        let r = stream.play();
+
+        std::thread::sleep(std::time::Duration::from_secs_f32(sleep));
+    });
 
     Ok(())
 }

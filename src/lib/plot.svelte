@@ -57,7 +57,7 @@
 
       line = new WebglLine(
         new ColorRGBA(color.r, color.g, color.b, 1),
-        data[0].length,
+        data[0].length
       );
       webglp.removeAllLines();
       webglp.addLine(line);
@@ -196,9 +196,8 @@
   <canvas id="freq_canvas" />
   <canvas id="time_canvas" />
   <button
-    on:click={async () => {
-      let r = await invoke("play", { name: selectedRecording });
-      console.log(r);
+    on:click={() => {
+      invoke("play", { name: selectedRecording });
     }}>play</button
   >
 </div>
