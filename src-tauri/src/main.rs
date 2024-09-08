@@ -6,7 +6,7 @@ use chrono::{self, DateTime, Utc};
 use clap::Parser;
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::{FromSample, Sample, SizedSample, Stream, StreamConfig};
-use std::f32::consts::PI;
+use std::f32::consts::{PI, SQRT_2};
 use std::fs::{self, Metadata};
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -22,6 +22,8 @@ use tauri::{Manager, Window};
 
 mod audio;
 use audio::*;
+mod butterworth;
+use butterworth::*;
 
 fn main() {
     tauri::Builder::default()
@@ -132,11 +134,13 @@ where
 
 #[tauri::command]
 fn stop_recording(
-    _name: &str,
+    name: &str,
+    trim: bool,
+    app_handle: tauri::AppHandle,
     is_recording: State<Mbool>,
     mwriter: State<Mwriter>,
     mstream: State<Mstream>,
-) {
+) -> Result<(), String> {
     let mut nt = is_recording.0.lock().unwrap();
     *nt = false;
     let writer = mwriter.0.lock().unwrap();
@@ -149,6 +153,39 @@ fn stop_recording(
     } else {
         println!("writer failed");
     }
+
+    if trim {
+        let p = app_handle
+            .path_resolver()
+            .resource_dir()
+            .unwrap()
+            .join("assets")
+            .join(name);
+
+        let r = hound::WavReader::open(p.clone());
+        let reader = if r.is_ok() {
+            r.unwrap()
+        } else {
+            return Err("failed to read wav file".to_string());
+        };
+        let spec = reader.spec();
+        let samples: Vec<f32> = reader.into_samples::<f32>().map(|x| x.unwrap()).collect();
+        let mut writer = hound::WavWriter::create(p, spec).unwrap();
+        let t1 = (spec.sample_rate as f32 * 0.1) as usize;
+        let t2 = samples.len() - (spec.sample_rate as f32 * 0.3) as usize;
+        println!("{:?}", t1);
+        println!("{:?}", t2);
+
+        for (i, samp) in samples.iter().enumerate() {
+            if i < t2 {
+                writer.write_sample(*samp);
+            }
+        }
+
+        writer.finalize().expect("failed to finalize trim writer");
+    }
+
+    Ok(())
 }
 
 #[tauri::command]
@@ -307,16 +344,21 @@ fn get_stft_data(
         let itr = reader.samples::<f32>().into_iter().step_by(1);
         let mut buffer = vec![];
         let len = itr.len();
+        let fftsize = 1024;
+        if len < fftsize {
+            // return Err("file too short to get fft");
+            return Ok((vec![], vec![]));
+        }
+
         for s in itr {
             let x = s.unwrap() as f32;
             v.push(x.clone());
             buffer.push(Complex { re: x, im: 0.0f32 })
         }
 
-        let fftsize = 1024;
         let mut vstft = stft(&mut buffer, fftsize, fftsize);
 
-        return Ok((v, vstft));
+        return Ok((v, vstft[1..].to_vec()));
     } else {
         return Err("bad path");
     }
@@ -340,9 +382,10 @@ fn stft(mut buffer: &Vec<Complex<f32>>, size: usize, hop: usize) -> Vec<f32> {
         }
 
         fft.process(&mut x);
+        let hpf = freq_hpf(15500.0, 44100.0, 1.0 / SQRT_2);
 
-        for i in x[0..size / 2].iter() {
-            spectra.push(i.norm());
+        for (i, cplx) in x[0..size / 2].iter().enumerate() {
+            spectra.push((cplx).norm_sqr());
         }
     }
 
@@ -399,7 +442,8 @@ fn play(name: &str, app_handle: tauri::AppHandle) -> Result<(), String> {
         }
         cpal::SampleFormat::F64 => {
             play_recording::<f64>(name, app_handle);
-        } // sample_format => Err(anyhow::Error::msg(format!(
+        }
+        // sample_format => Err(anyhow::Error::msg(format!(
         //     "Unsupported sample format '{sample_format}'"
         // ))),
         _ => {}
@@ -444,12 +488,13 @@ where
     tauri::async_runtime::spawn(async move {
         let sleep = samples.len() as f32 / conf.sample_rate.0 as f32;
         let mut t = 0;
+        let window = app_handle.get_window("main").unwrap();
         let stream = device
             .build_output_stream(
                 &conf.into(),
                 move |output: &mut [T], _: &cpal::OutputCallbackInfo| {
                     for frame in output.chunks_mut(num_channels) {
-                        if t > num_samples {
+                        if t >= num_samples {
                             break;
                         }
                         // assuming mono input, will write to both outputs if output is stereo
@@ -458,6 +503,7 @@ where
                             *out_sample = v;
                         }
                         t += 1;
+                        window.emit("time_indicator", { t });
                     }
                 },
                 err_fn,
@@ -468,6 +514,8 @@ where
         let r = stream.play();
 
         std::thread::sleep(std::time::Duration::from_secs_f32(sleep));
+        let window = app_handle.get_window("main").unwrap();
+        window.emit("time_indicator", { 0 });
     });
 
     Ok(())

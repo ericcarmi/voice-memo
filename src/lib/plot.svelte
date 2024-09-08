@@ -1,8 +1,9 @@
 <script lang="ts">
   import { invoke } from "@tauri-apps/api/tauri";
-  import { onMount } from "svelte";
+  import { listen } from "@tauri-apps/api/event";
+  import { onDestroy, onMount } from "svelte";
   import { WebglPlot, WebglLine, ColorRGBA } from "webgl-plot";
-  import { linlog, loglin } from "./types.svelte";
+  import { linlog, loglin, mel } from "./types.svelte";
   // import { loglin, linlog } from "./types.svelte";
 
   let webglp: WebglPlot;
@@ -19,6 +20,17 @@
   let height = 200;
   const color = { r: 158 / 255, g: 98 / 255, b: 64 / 255 };
   // const background = { r: 255 / 255, g: 224 / 255, b: 181 / 255 };
+  let indicator_position = 0;
+  let time_length = 1;
+
+  let unlisten = listen("time_indicator", (event: any) => {
+    // console.log(event.payload)
+    indicator_position = (event.payload / time_length) * width;
+  });
+
+  onDestroy(() => {
+    unlisten.then((f) => f());
+  });
 
   onMount(() => {
     canvasMain = document.getElementById("time_canvas");
@@ -40,7 +52,7 @@
     ctx = freqcanvas.getContext("2d", { willReadFrequently: true });
   });
 
-  async function getWavData() {
+  async function getData() {
     if (selectedRecording === "") return;
 
     let data: any = await invoke("get_stft_data", {
@@ -49,7 +61,7 @@
 
     let id = 0;
     let renderPlot = () => {
-      const fftsize = 512;
+      const fftsize = 512; // already divided by 2
       // setting the width here will scale it properly, much easier than dealing with fractional indices (even more complicated due to stft resampling to match image data structure)
       freqcanvas.width = data[1].length / fftsize;
 
@@ -59,12 +71,16 @@
         new ColorRGBA(color.r, color.g, color.b, 1),
         data[0].length
       );
+
       webglp.removeAllLines();
       webglp.addLine(line);
       line.arrangeX();
       // const ratio = data[0].length / width;
       // console.log(data[0].length, ratio);
 
+      time_length = data[0].length;
+
+      // should probably downsample
       for (let i = 0; i < data[0].length; i++) {
         // console.log(Math.round(ratio * i), data[0][Math.round(ratio * i)]);
 
@@ -134,21 +150,28 @@
       let remainder = 0;
 
       let scalar = 255;
+
+      let used_rows: Array<number> = [];
       if (T % 1 === 0) {
         for (let i = 0; i < L; i += 4) {
           const r = Math.floor(loglin(row + 1, 1, height)) - 1;
-          // console.log(r, row);
+          if (used_rows.includes(r)) {
+            continue;
+          }
+          used_rows.push(r);
+          precise = col * fftsize + r;
+          int = Math.round(precise + remainder);
+          remainder = precise % 1;
 
-          index = col * fftsize + r;
-          let x = data[1][index];
+          let x = Math.abs(data[1][int]);
           if (!isNaN(x)) {
             amp = Math.log10(x + 1e-6) * scalar;
           }
 
-          image_data[i] = amp * color.r;
-          image_data[i + 1] = amp * color.g;
-          image_data[i + 2] = amp * color.b;
-          image_data[i + 3] = 255;
+          image_data[i] += amp * color.r;
+          image_data[i + 1] += amp * color.g;
+          image_data[i + 2] += amp * color.b;
+          image_data[i + 3] += 255;
           col += 1;
           if (col === width) {
             row += 1;
@@ -157,20 +180,31 @@
         }
       } else {
         for (let i = 0; i < L; i += 4) {
+          // if (used_rows.includes(row)) {
+
+          // row += 1;
+          // col = 0;
+          // continue;
+          // }
+          // used_rows.push(row);
+          // for mel spectrum, convert row to freq then convert to mel then back to row?
           const r = Math.floor(linlog(row + 1, 1, height)) - 1;
+          // const freq = row/height * 44100 / (fftsize*4)
+          // const m = mel(freq)
+          // const r = Math.floor(m);
           precise = col * fftsize + r;
           int = Math.round(precise + remainder);
           remainder = precise % 1;
 
-          let x = data[1][int];
+          let x = Math.abs(data[1][int]);
           if (!isNaN(x)) {
             amp = Math.log10(x + 1e-6) * scalar;
           }
 
-          image_data[i] = amp * color.r;
-          image_data[i + 1] = amp * color.g;
-          image_data[i + 2] = amp * color.b;
-          image_data[i + 3] = 255;
+          image_data[i] += amp * color.r;
+          image_data[i + 1] += amp * color.g;
+          image_data[i + 2] += amp * color.b;
+          image_data[i + 3] += 255;
           col += 1;
           if (col === width) {
             row += 1;
@@ -189,7 +223,7 @@
     };
   }
 
-  $: selectedRecording, getWavData();
+  $: selectedRecording, getData();
 </script>
 
 <div>
@@ -197,12 +231,22 @@
   <canvas id="time_canvas" />
   <button
     on:click={() => {
-      invoke("play", { name: selectedRecording });
+      invoke("play", { name: selectedRecording }).then(() => {
+
+      });
     }}>play</button
   >
+  <div class="indicator" style="margin-left:{indicator_position}px" />
 </div>
 
 <style>
+  .indicator {
+    width: 5px;
+    height: 403px;
+    position: absolute;
+    top: 25px;
+    background: rgba(200, 100, 0, 0.5);
+  }
   canvas {
     width: 600px;
     height: 200px;
@@ -210,13 +254,13 @@
   }
   #freq_canvas {
     transform: scale(1, -1);
-    margin-top: 1em;
+    margin-top: 25px;
   }
   div {
     user-select: none;
     display: flex;
     flex-direction: column;
-    gap: 1em;
+    gap: 3px;
   }
   button {
     width: max-content;

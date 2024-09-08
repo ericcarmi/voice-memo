@@ -58,11 +58,11 @@ button {
 }
 
 button:hover {
-  box-shadow: 0 4px 4px var(--sepia2);
+  box-shadow: 0 2px 2px var(--sepia5);
 }
 
 button:active {
-  background-color: var(--sepia3);
+  box-shadow: 0 4px 4px var(--sepia2);
 }
 
 button {
@@ -75,6 +75,10 @@ input {
   border: 1px solid transparent;
   background: var(--sepia4);
   color: var(--sepia0);
+}
+
+input[type="checkbox"] {
+  accent-color: var(--sepia4);
 }
 
 input:focus {

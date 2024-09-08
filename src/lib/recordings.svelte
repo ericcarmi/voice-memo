@@ -12,7 +12,8 @@
 
   let page = 1;
   let num_pages = 1;
-  let items_per_page = 7;
+  let items_per_page = 6;
+  let trim = false;
 
   async function get_files() {
     let entries: Array<string> = await invoke("get_wavs");
@@ -46,14 +47,14 @@
   onMount(async () => {
     await get_files();
 
-    num_pages = Math.ceil(sortedRecordings.length / items_per_page);
+    num_pages = Math.max(1,Math.ceil(sortedRecordings.length / items_per_page));
   });
 
   let displayed_recordings: Array<Array<string>> = [];
   $: sortedRecordings,
     (displayed_recordings = sortedRecordings.slice(
       items_per_page * (page - 1),
-      items_per_page * page,
+      items_per_page * page
     ));
 
   async function updateFileName(oldname: string, newname: string) {
@@ -105,8 +106,10 @@
 
   async function stopRecording() {
     isRecording = false;
+
     await invoke("stop_recording", {
-      name: "stop",
+      name: fname,
+      trim: Boolean(trim),
     });
     selectedRecording = fname;
     // sortedRecordings = [[fname, date], ...sortedRecordings];
@@ -117,6 +120,10 @@
 </script>
 
 <div class="wrapper">
+  <label style="font-size:12px;margin-right: 2em;">
+    trim
+    <input type="checkbox" bind:value={trim}/>
+  </label>
   <button on:click={() => (isRecording ? stopRecording() : record())}
     >{isRecording ? "stop" : "record"}</button
   >
@@ -154,6 +161,7 @@
           autocapitalize="off"
           spellcheck="false"
           class="filename"
+          data-attribute={recording[0] === selectedRecording}
           value={recording[0].slice(0, -4)}
           style="z-index:{recording[0] === selectedRecording ? 0 : -1}"
           on:focus={(e) => {
@@ -229,6 +237,10 @@
 
   button {
     margin: 0.5em 0;
+  }
+
+  input[data-attribute="false"] {
+    border: none;
   }
 
   .pager {
