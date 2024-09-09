@@ -7,8 +7,9 @@
   export let recordings: Record<string, Recording>;
   export let uid: number;
   export let sortedRecordings: Array<Array<string>> = [];
-  export let prefix = "";
-  export let counter = 0;
+  let last_prefix = "";
+  let prefix = "";
+  let counter = 0;
 
   let page = 1;
   let num_pages = 1;
@@ -47,7 +48,10 @@
   onMount(async () => {
     await get_files();
 
-    num_pages = Math.max(1,Math.ceil(sortedRecordings.length / items_per_page));
+    num_pages = Math.max(
+      1,
+      Math.ceil(sortedRecordings.length / items_per_page)
+    );
   });
 
   let displayed_recordings: Array<Array<string>> = [];
@@ -85,6 +89,10 @@
     isRecording = true;
     date = new Date().toISOString();
 
+    if (last_prefix !== prefix) {
+      counter = 0;
+    }
+
     // let s = date.split("T");
     // const fname = s[0] + "--" + s[1].split(".")[0] + ".wav";
     if (prefix === "") {
@@ -97,6 +105,7 @@
     recordings[fname] = { created: date, uid: uid };
     // add newest to front
     sortedRecordings = [[fname, date], ...sortedRecordings];
+    last_prefix = prefix;
 
     await invoke("record", {
       name: fname,
@@ -120,9 +129,38 @@
 </script>
 
 <div class="wrapper">
+  <div class="menu">
+    <div class="menu-wrapper">
+      <span>prefix</span>
+      <input
+        autocomplete="off"
+        autocorrect="off"
+        autocapitalize="off"
+        spellcheck="false"
+        bind:value={prefix}
+        title="file prefix"
+        on:change={(e) => {
+          prefix = e.currentTarget.value;
+        }}
+      />
+    </div>
+
+    <div class="menu-wrapper">
+      <span>counter</span>
+      <input
+        placeholder="enter a number"
+        value={counter}
+        title="next number to append"
+        on:change={(e) => {
+          prefix = e.currentTarget.value;
+        }}
+      />
+    </div>
+  </div>
+
   <label style="font-size:12px;margin-right: 2em;">
     trim
-    <input type="checkbox" bind:value={trim}/>
+    <input type="checkbox" bind:value={trim} />
   </label>
   <button on:click={() => (isRecording ? stopRecording() : record())}
     >{isRecording ? "stop" : "record"}</button
@@ -198,10 +236,7 @@
 <style>
   .wrapper {
     width: 200px;
-    margin-left: 1em;
-  }
-  .list {
-    height: 350px;
+    margin-left: 20px;
   }
   .recording {
     background: var(--sepia4);
@@ -236,7 +271,7 @@
   }
 
   button {
-    margin: 0.5em 0;
+    margin: 7px 0;
   }
 
   input[data-attribute="false"] {
@@ -246,5 +281,20 @@
   .pager {
     padding: 0 4px;
     margin: 1px;
+  }
+
+  .menu-wrapper {
+    height: 50px;
+    font-size: 12px;
+    display: flex;
+    flex-direction: column;
+  }
+  .menu {
+    display: flex;
+  }
+  .menu * input {
+    width: 80%;
+    align-self: center;
+    text-align: center;
   }
 </style>

@@ -34,7 +34,7 @@
     "bundle": {
       "active": true,
       "targets": "all",
-      "identifier": "dev.voicememo",
+      "identifier": "voicememo.dev",
       "resources": [
         "assets"
       ],

@@ -3,7 +3,7 @@
   import { listen } from "@tauri-apps/api/event";
   import { onDestroy, onMount } from "svelte";
   import { WebglPlot, WebglLine, ColorRGBA } from "webgl-plot";
-  import { linlog, loglin, mel } from "./types.svelte";
+  import { linlog, loglin } from "./types.svelte";
   // import { loglin, linlog } from "./types.svelte";
 
   let webglp: WebglPlot;
@@ -19,9 +19,13 @@
   let width = 600;
   let height = 200;
   const color = { r: 158 / 255, g: 98 / 255, b: 64 / 255 };
+
+  const rgbacolor = new ColorRGBA(color.r, color.g, color.b, 1);
   // const background = { r: 255 / 255, g: 224 / 255, b: 181 / 255 };
   let indicator_position = 0;
   let time_length = 1;
+
+  let time_labels: Array<string> = [];
 
   let unlisten = listen("time_indicator", (event: any) => {
     // console.log(event.payload)
@@ -67,10 +71,7 @@
 
       const T = width / (data[1].length / fftsize);
 
-      line = new WebglLine(
-        new ColorRGBA(color.r, color.g, color.b, 1),
-        data[0].length
-      );
+      line = new WebglLine(rgbacolor, data[0].length);
 
       webglp.removeAllLines();
       webglp.addLine(line);
@@ -79,16 +80,14 @@
       // console.log(data[0].length, ratio);
 
       time_length = data[0].length;
+      time_labels = ["0", (time_length / 44100.0).toFixed(3).toString()];
 
       // should probably downsample
       for (let i = 0; i < data[0].length; i++) {
-        // console.log(Math.round(ratio * i), data[0][Math.round(ratio * i)]);
-
-        // line.setY(i, data[0][Math.round(ratio * i)]);
         line.setY(i, data[0][i]);
       }
       webglp.update();
-      ctx = freqcanvas.getContext("2d", { willReadFrequently: true });
+      // ctx = freqcanvas.getContext("2d", { willReadFrequently: true });
 
       const image = ctx.getImageData(0, 0, width, height);
       const image_data = image.data;
@@ -155,6 +154,7 @@
       if (T % 1 === 0) {
         for (let i = 0; i < L; i += 4) {
           const r = Math.floor(loglin(row + 1, 1, height)) - 1;
+
           if (used_rows.includes(r)) {
             continue;
           }
@@ -188,10 +188,15 @@
           // }
           // used_rows.push(row);
           // for mel spectrum, convert row to freq then convert to mel then back to row?
-          const r = Math.floor(linlog(row + 1, 1, height)) - 1;
           // const freq = row/height * 44100 / (fftsize*4)
           // const m = mel(freq)
           // const r = Math.floor(m);
+          const r = Math.floor(linlog(row + 1, 1, height)) - 1;
+          // console.log(used_rows);
+
+          // if (used_rows.includes(r)) {
+          //   continue;
+          // }
           precise = col * fftsize + r;
           int = Math.round(precise + remainder);
           remainder = precise % 1;
@@ -209,6 +214,7 @@
           if (col === width) {
             row += 1;
             col = 0;
+            // used_rows.push(r);
           }
         }
       }
@@ -228,14 +234,19 @@
 
 <div>
   <canvas id="freq_canvas" />
-  <canvas id="time_canvas" />
-  <button
-    on:click={() => {
-      invoke("play", { name: selectedRecording }).then(() => {
-
-      });
-    }}>play</button
-  >
+  <div>
+    <canvas id="time_canvas" />
+    <div style="width: 100%;text-align: right; font-size: 10px;">
+      {#if time_labels.length > 1}
+        <span>{time_labels[1]}</span>
+      {/if}
+      <button
+        on:click={() => {
+          invoke("play", { name: selectedRecording }).then(() => {});
+        }}>play</button
+      >
+    </div>
+  </div>
   <div class="indicator" style="margin-left:{indicator_position}px" />
 </div>
 
@@ -244,7 +255,7 @@
     width: 5px;
     height: 403px;
     position: absolute;
-    top: 25px;
+    top: 5px;
     background: rgba(200, 100, 0, 0.5);
   }
   canvas {
@@ -254,7 +265,7 @@
   }
   #freq_canvas {
     transform: scale(1, -1);
-    margin-top: 25px;
+    margin-top: 5px;
   }
   div {
     user-select: none;
@@ -265,5 +276,6 @@
   button {
     width: max-content;
     align-self: center;
+    position: absolute;
   }
 </style>

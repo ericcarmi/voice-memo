@@ -12,6 +12,7 @@ pub fn lowpass(frequency: f32, sample_rate: f32, q: f32) -> Vec<Complex<f32>> {
 
     iir.b0 = (1.0 - cos) / 2.0;
     iir.b1 = 1.0 - cos;
+    iir.b2 = (1.0 - cos) / 2.0;
 
     iir.a0 = 1.0 + alpha;
     iir.a1 = -2.0 * cos;
@@ -31,6 +32,7 @@ pub fn freq_hpf(frequency: f32, sample_rate: f32, q: f32) -> Vec<Complex<f32>> {
 
     iir.b0 = (1.0 + cos) / 2.0;
     iir.b1 = -1.0 - cos;
+    iir.b2 = (1.0 + cos) / 2.0;
 
     iir.a0 = 1.0 + alpha;
     iir.a1 = -2.0 * cos;

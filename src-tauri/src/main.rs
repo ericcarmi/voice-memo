@@ -356,7 +356,9 @@ fn get_stft_data(
             buffer.push(Complex { re: x, im: 0.0f32 })
         }
 
-        let mut vstft = stft(&mut buffer, fftsize, fftsize);
+        let mut vstft = diff_stft(&mut buffer, fftsize, fftsize);
+        // let down_rate = v.len() / 600; // 600 is front-end width of plot
+        // let o = v.iter().step_by(1).map(|x| *x).collect();
 
         return Ok((v, vstft[1..].to_vec()));
     } else {
@@ -364,32 +366,6 @@ fn get_stft_data(
     }
 
     Ok((v, vstft))
-}
-
-fn stft(mut buffer: &Vec<Complex<f32>>, size: usize, hop: usize) -> Vec<f32> {
-    let mut planner = FftPlanner::new();
-    let fft = planner.plan_fft_forward(size);
-
-    let l = buffer.len();
-    let num_slices = (l / size);
-    let mut spectra: Vec<f32> = vec![];
-    let window = hamming_complex(size);
-    for slice in 0..num_slices {
-        // let mut x = buffer[slice * size..(slice + 1) * size].to_vec();
-        let mut x = vec![CZERO; size];
-        for i in 0..size {
-            x[i] = buffer[slice * size..(slice + 1) * size][i] * window[i]
-        }
-
-        fft.process(&mut x);
-        let hpf = freq_hpf(15500.0, 44100.0, 1.0 / SQRT_2);
-
-        for (i, cplx) in x[0..size / 2].iter().enumerate() {
-            spectra.push((cplx).norm_sqr());
-        }
-    }
-
-    spectra
 }
 
 #[tauri::command]
@@ -519,4 +495,59 @@ where
     });
 
     Ok(())
+}
+
+fn diff_stft(mut buffer: &Vec<Complex<f32>>, size: usize, hop: usize) -> Vec<f32> {
+    let mut planner = FftPlanner::new();
+    let fft = planner.plan_fft_forward(size);
+
+    let l = buffer.len();
+    let num_slices = (l / size);
+    let mut spectra: Vec<f32> = vec![];
+    let window = hamming_complex(size);
+    let mut prev_spectrum = vec![CZERO; size];
+    for slice in 0..num_slices {
+        // let mut x = buffer[slice * size..(slice + 1) * size].to_vec();
+        let mut x = vec![CZERO; size];
+        for i in 0..size {
+            x[i] = buffer[slice * size..(slice + 1) * size][i] * window[i]
+        }
+
+        fft.process(&mut x);
+        let hpf = freq_hpf(25500.0, 44100.0, 1.0 / SQRT_2);
+
+        for (i, cplx) in x[0..size / 2].iter().enumerate() {
+            // spectra.push((cplx).norm_sqr());
+            spectra.push((cplx).norm_sqr() - prev_spectrum[i].norm_sqr());
+        }
+        prev_spectrum = x.clone();
+    }
+
+    spectra
+}
+
+fn stft(mut buffer: &Vec<Complex<f32>>, size: usize, hop: usize) -> Vec<f32> {
+    let mut planner = FftPlanner::new();
+    let fft = planner.plan_fft_forward(size);
+
+    let l = buffer.len();
+    let num_slices = (l / size);
+    let mut spectra: Vec<f32> = vec![];
+    let window = hamming_complex(size);
+    for slice in 0..num_slices {
+        // let mut x = buffer[slice * size..(slice + 1) * size].to_vec();
+        let mut x = vec![CZERO; size];
+        for i in 0..size {
+            x[i] = buffer[slice * size..(slice + 1) * size][i] * window[i]
+        }
+
+        fft.process(&mut x);
+        let hpf = freq_hpf(200.0, 44100.0, 1.0 / SQRT_2);
+
+        for (i, cplx) in x[0..size / 2].iter().enumerate() {
+            spectra.push((hpf[i] * cplx).norm_sqr());
+        }
+    }
+
+    spectra
 }

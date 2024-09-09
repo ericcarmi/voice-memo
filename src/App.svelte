@@ -2,10 +2,7 @@
   import Recordings from "./lib/recordings.svelte";
   import TimePlot from "./lib/plot.svelte";
   import type { Recording } from "./lib/types.svelte";
-  import Menu from "./lib/menu.svelte";
 
-  let prefix = "";
-  let counter = 0;
   let recordings: Record<string, Recording> = {};
   let sortedRecordings: Array<Array<string>> = [];
   let uid = 0;
@@ -28,14 +25,11 @@
     on:mouseup={() => (isDragging = false)}
   >
     <div style="display:flex; flex-direction: column; width:240px">
-      <Menu bind:counter bind:prefix />
       <Recordings
         {uid}
         {recordings}
         bind:sortedRecordings
         bind:selectedRecording
-        bind:counter
-        bind:prefix
       />
     </div>
     <TimePlot bind:selectedRecording />
