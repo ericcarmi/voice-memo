@@ -1,5 +1,11 @@
+@font-face {
+  font-family: "FreeMono";
+  src:
+    url("FreeMono.otf") format("opentype");
+}
+
 :root {
-  font-family: monospace, Avenir, Helvetica, Arial, sans-serif;
+  font-family: FreeMono, Avenir, Helvetica, Arial, sans-serif;
   font-size: 16px;
   line-height: 24px;
   font-weight: 400;
@@ -30,6 +36,10 @@
     color: var(--sepia5);
   }
 
+  * {
+    font-family: FreeMono;
+  }
+
 }
 
 body,
@@ -47,7 +57,6 @@ html {
 
 button {
   padding: 0.5em 1em;
-  font-family: inherit;
   color: var(--sepia1);
   background: var(--sepia4);
   box-shadow: 0 4px 4px var(--sepia5);

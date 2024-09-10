@@ -13,7 +13,7 @@
 
   let page = 1;
   let num_pages = 1;
-  let items_per_page = 6;
+  let items_per_page = 10;
   let trim = false;
 
   async function get_files() {
@@ -50,7 +50,7 @@
 
     num_pages = Math.max(
       1,
-      Math.ceil(sortedRecordings.length / items_per_page)
+      Math.ceil(sortedRecordings.length / items_per_page),
     );
   });
 
@@ -58,7 +58,7 @@
   $: sortedRecordings,
     (displayed_recordings = sortedRecordings.slice(
       items_per_page * (page - 1),
-      items_per_page * page
+      items_per_page * page,
     ));
 
   async function updateFileName(oldname: string, newname: string) {
@@ -158,13 +158,17 @@
     </div>
   </div>
 
-  <label style="font-size:12px;margin-right: 2em;">
-    trim
-    <input type="checkbox" bind:value={trim} />
-  </label>
-  <button on:click={() => (isRecording ? stopRecording() : record())}
-    >{isRecording ? "stop" : "record"}</button
-  >
+  <div style="display:flex; flex-direction: column;">
+    <label
+      style="font-size:12px;margin-right: 1em; align-self: center; display: flex;"
+    >
+      <input type="checkbox" bind:value={trim} style="align-self: center;" />
+      trim
+    </label>
+    <button on:click={() => (isRecording ? stopRecording() : record())}
+      >{isRecording ? "stop" : "record"}</button
+    >
+  </div>
   <br />
   <span
     >({sortedRecordings.length}) --- {page} of {num_pages}
@@ -192,6 +196,9 @@
         on:click={() => {
           selectedRecording = recording[0];
         }}
+        title={recording[1].split("T")[0] +
+          " " +
+          recording[1].split("T")[1].split(".")[0]}
       >
         <input
           autocomplete="off"
@@ -217,17 +224,11 @@
             }
           }}
           on:blur={() => {
-            console.log(selectedRecording, tempName);
             if (selectedRecording !== tempName + ".wav" && tempName !== "") {
               updateFileName(oldName, tempName);
             }
           }}
         />
-        <span
-          >{recording[1].split("T")[0] +
-            " " +
-            recording[1].split("T")[1].split(".")[0]}</span
-        >
       </div>
     {/each}
   </div>
@@ -238,11 +239,15 @@
     width: 200px;
     margin-left: 20px;
   }
+  .list {
+    margin-top: 7px;
+  }
   .recording {
     background: var(--sepia4);
     cursor: pointer;
     position: relative;
     z-index: 5;
+    height: 25px;
   }
   .recording * {
     color: var(--sepia1);
@@ -270,17 +275,13 @@
     font-size: 12px;
   }
 
-  button {
-    margin: 7px 0;
-  }
-
   input[data-attribute="false"] {
     border: none;
   }
 
   .pager {
     padding: 0 4px;
-    margin: 1px;
+    margin: 2px;
   }
 
   .menu-wrapper {

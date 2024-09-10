@@ -52,10 +52,10 @@
     "windows": [
       {
         "fullscreen": false,
-        "resizable": true,
+        "resizable": false,
         "title": "voice-memo",
         "width": 950,
-        "height": 515
+        "height": 450
       }
     ]
   }
