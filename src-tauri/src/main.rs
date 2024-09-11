@@ -17,7 +17,7 @@ use rustfft::{num_complex::Complex, FftPlanner};
 use std::sync::Mutex;
 use std::{fs::metadata, fs::File, io::BufWriter, process::Command};
 use tauri::command::CommandItem;
-use tauri::State;
+use tauri::{LogicalSize, State};
 use tauri::{Manager, Window};
 
 mod audio;
@@ -80,7 +80,19 @@ fn main() {
             Mutex::new(writer)
         }))
         .setup(|app| {
-            let main_window = app.get_window("main").unwrap();
+            let window = app.get_window("main").unwrap();
+
+            #[cfg(target_os = "macos")]
+            window.set_size(LogicalSize {
+                width: 950,
+                height: 470,
+            });
+
+            #[cfg(not(target_os = "macos"))]
+            window.set_size(LogicalSize {
+                width: 950,
+                height: 450,
+            });
 
             Ok(())
         })
